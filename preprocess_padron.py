@@ -1,11 +1,30 @@
 from data_source import DataSource
 import pandas as pd
+import pickle
+import json
 
 # Select initial Municipio and voting booths, Filter valid votes
 ds = DataSource()
 council = 'PILAR'
-df = ds.select_council(year=2019, election_type='municipales', council=council)
-parties = ds.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
+data, data_paso, volatility, parties = ds.select_council(year=2019,
+                                                         election_type='municipales',
+                                                         council=council)
+localidades = ds.electoral_roll.localidad.unique()
+features = ds.electoral_roll.columns[2:]
+
+# Save to disk
+data.to_csv('./data/generales.csv')
+data_paso.to_csv('./data/paso.csv')
+volatility.to_csv('./data/volatility.csv')
+
+with open('./data/parties.pkl', "wb") as open_file:
+    pickle.dump(parties, open_file)
+
+with open('./data/counties.pkl', "wb") as open_file:
+    pickle.dump(localidades, open_file)
+
+with open('./data/features.pkl', "wb") as open_file:
+    pickle.dump(features, open_file)
 
 padron = pd.read_excel('./dataset/Padron_Del_Pilar-2019.xlsx')
 padron = padron.loc[3:, :]

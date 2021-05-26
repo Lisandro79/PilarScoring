@@ -5,33 +5,36 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-from data_source import DataSource
+# from data_source import DataSource
 import json
-import random
+import pickle
 import dash_bootstrap_components as dbc
+from os import path
+import random
 
 
-ds = DataSource()
-council = 'PILAR'
-data, data_paso, volatility, parties = ds.select_council(year=2019,
-                                                         election_type='municipales',
-                                                         council=council)
-localidades = ds.electoral_roll.localidad.unique()
-features = ds.electoral_roll.columns[2:]
+data_dir = './data/'
+general_election = pd.read_csv(path.join(data_dir, 'generales.csv'))
+paso_election = pd.read_csv(path.join(data_dir, 'paso.csv'))
+volatility = pd.read_csv(path.join(data_dir, 'volatility.csv'))
 
-colors = {
-    'background': '#222',
-    'text': '#fff'
-}
+with open(path.join(data_dir, 'parties.pkl'), 'rb') as open_file:
+    parties = pickle.load(open_file)
 
-# Dashboard
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
-app.title = 'Dashboard Nous'
-server = app.server
+with open(path.join(data_dir, 'counties.pkl'), 'rb') as open_file:
+    localidades = pickle.load(open_file)
+
+with open(path.join(data_dir, 'features.pkl'), 'rb') as open_file:
+    features = pickle.load(open_file)
+
+data_loc = './geographical_data/buenos_aires.geojson'
+with open(data_loc) as open_file:
+    geojson = json.load(open_file)
 
 # Map
+council = 'PILAR'
 LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
-geojson = ds.get_geo_polygons()
+# geojson = ds.get_geo_polygons()
 counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
 dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
 dat = dat.loc[dat.Municipios.str.upper() == council]
@@ -43,6 +46,16 @@ fig_map = px.choropleth_mapbox(dat,
                                mapbox_style="carto-positron",
                                zoom=11,
                                opacity=0.2)  # color="Votes",
+
+colors = {
+    'background': '#222',
+    'text': '#fff'
+}
+
+# Dashboard
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
+app.title = 'Dashboard Nous'
+server = app.server
 
 # Layout
 app.layout = dbc.Container(
@@ -225,31 +238,31 @@ app.layout = dbc.Container(
     Input('slider-year', 'value')
 )
 def update_dataframe(selected_year):
-    general_election, _, volatility, political_parties = ds.select_council(year=selected_year,
-                                                                           election_type='municipales',
-                                                                           council=council)
-    formatted_localidades = [{'label': i, 'value': i} for i in ds.electoral_roll.localidad.unique()]
-    formatted_features = [{'label': i, 'value': i} for i in ds.electoral_roll.columns[2:]]
-    formatted_political_parties = [{'label': i, 'value': i} for i in political_parties]
+    # general_election, _, volatility, parties = ds.select_council(year=selected_year,
+    #                                                                        election_type='municipales',
+    #                                                                        council=council)
+    formatted_localidades = [{'label': i, 'value': i} for i in localidades]
+    formatted_features = [{'label': i, 'value': i} for i in features]
+    formatted_political_parties = [{'label': i, 'value': i} for i in parties]
 
     return general_election.to_json(date_format='iso', orient='split'), \
            volatility.to_json(date_format='iso', orient='split'), \
-           json.dumps(political_parties), \
+           json.dumps(parties), \
            formatted_localidades, \
            formatted_political_parties, \
            formatted_features, \
            formatted_localidades, \
            formatted_political_parties, \
            localidades[0], \
-           political_parties[1], \
+           parties[1], \
            features[0], \
            localidades[0], \
-           political_parties[1], \
+           parties[1], \
            formatted_political_parties, \
            formatted_political_parties, \
-           political_parties[1], \
-           political_parties[3], \
-           political_parties[1], \
+           parties[1], \
+           parties[3], \
+           parties[1], \
            formatted_political_parties
 
 
