@@ -1,0 +1,22 @@
+.header-title {
+  font-size: 48px;
+  color: white;
+  background-color: #222;
+  text-align: left;
+}
+
+.header-description {
+    margin: 4px auto;
+    margin-top: 250px auto;
+    margin-bottom: 250px auto;
+    text-align: left;
+}
+
+.section1-description {
+    color: black;
+    font-size: 24px;
+    margin: 4px auto;
+    margin-top: 250px auto;
+    margin-bottom: 250px auto;
+    text-align: left;
+}
