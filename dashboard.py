@@ -26,8 +26,8 @@ colors = {
 
 # Dashboard
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
-server = app.server
 app.title = 'Dashboard Nous'
+server = app.server
 
 # Map
 LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
