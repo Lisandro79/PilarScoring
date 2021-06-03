@@ -178,6 +178,8 @@ app.layout = dbc.Container(
                       html.Br(),
                       ]
         ),
+
+        html.Div(id='third-table'),
         dbc.Row(
             [
                 dbc.Col(dcc.Dropdown(id='dropdown-localidad',
@@ -387,7 +389,8 @@ def update_pie_google_maps(serialized_data, serialized_political_parties):
 @app.callback(
     [Output('scatter', 'figure'),
      Output('hbar', 'figure'),
-     Output('scatter-localidad', 'figure')],
+     Output('scatter-localidad', 'figure'),
+     Output('third-table', 'children')],
     [Input('intermediate-data', 'children'),
      Input('intermediate-parties', 'children'),
      Input('dropdown-localidad', 'value'),
@@ -413,6 +416,7 @@ def update_charts(serialized_data,
     results.reset_index(drop=True, inplace=True)
 
     pearson_r = general_election[dropdown1].corr(general_election[dropdown2])
+    pearson_r = '{:,.2f}'.format(pearson_r)
     fig_scatter = px.scatter(general_election,
                              x=dropdown1,
                              y=dropdown2,
@@ -444,6 +448,7 @@ def update_charts(serialized_data,
     filtered_by_county = general_election.loc[general_election['localidad'] == dropdown_localidad]
     pearson_r = filtered_by_county[dropdown_localidad_feature] \
         .corr(filtered_by_county[dropdown_localidad_partido])
+    pearson_r = '{:,.2f}'.format(pearson_r)
     fig_scatter_localidad = px.scatter(filtered_by_county,
                                        x=dropdown_localidad_feature,
                                        y=dropdown_localidad_partido,
@@ -454,8 +459,24 @@ def update_charts(serialized_data,
                                         paper_bgcolor=colors['background'],
                                         font_color=colors['text']
                                         )
+    cols_features = ['pmale', 'pfemale', '18-25', '25-35', '35-45', '45-55', '55-65', '65-75', '>75']
+    pearsons = {feature: '{:,.2f}'.format(filtered_by_county[feature]
+                                          .corr(filtered_by_county[dropdown_localidad_partido]))
+                for feature in cols_features}
 
-    return fig_scatter, fig_bar, fig_scatter_localidad
+    table = html.Div([
+        dcc.Markdown('''***Características demograficas y resultados electorales***'''),
+        dash_table.DataTable(
+            id='table',
+            columns=[{"name": i, "id": i} for i in cols_features],
+            data=[pearsons],
+            style_cell={'width': '300px',
+                        'height': '60px',
+                        'textAlign': 'center'}
+        )
+    ])
+
+    return fig_scatter, fig_bar, fig_scatter_localidad, table
 
 
 if __name__ == "__main__":
