@@ -1,16 +1,17 @@
-import plotly.express as px
 import pandas as pd
 import numpy as np
 import dash
+from os import path
+import random
+import json
+import pickle
+import plotly.express as px
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 # from data_source import DataSource
-import json
-import pickle
 import dash_bootstrap_components as dbc
-from os import path
-import random
+import dash_table
 
 
 data_dir = './data/'
@@ -157,6 +158,8 @@ app.layout = dbc.Container(
             ]
         ),
         dcc.Graph(id='fig_volatility'),
+        html.Div(id='first-table'),
+        html.Div(id='second-table'),
 
         # Section 3: Resultados desagregados por Localidad, Mesa por Mesa
         html.H1(
@@ -200,6 +203,75 @@ app.layout = dbc.Container(
 
     ], fluid=True
 )
+
+
+@app.callback(
+    Output('second-table', 'children'),
+    Input('fig_volatility', 'hoverData'))
+def display_second_table(hover_data):
+    if hover_data is not None:
+        mesa = hover_data['points'][0]['customdata'][0]
+        cols_table = ['pmale', 'pfemale', '18-25', '25-35', '35-45', '45-55', '55-65', '65-75', '>75']
+        data = general_election.loc[general_election.mesa == mesa, cols_table]
+        for col in cols_table:
+            data[col] = pd.Series(["{0:.2f}%".format(val) for val in data[col]], index=data.index)
+        data = data.to_dict('records')
+        table = html.Div([
+            dcc.Markdown('''***Caracteristicas demograficas de la mesa***'''),
+            dash_table.DataTable(
+                id='table',
+                columns=[{"name": i, "id": i} for i in cols_table],
+                data=data,
+                style_cell={'width': '300px',
+                            'height': '60px',
+                            'textAlign': 'center'}
+            )
+        ])
+        return table
+
+
+@app.callback(
+    Output('first-table', 'children'),
+    Input('fig_volatility', 'hoverData'))
+def display_first_table(hover_data):
+    if hover_data is not None:
+        cols_table = ['Elección',
+                       'mesa',
+                       'FRENTE DE TODOS',
+                       'JUNTOS POR EL CAMBIO',
+                       'CONSENSO FEDERAL',
+                       'FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD',
+                       'FRENTE NOS',
+                      ]
+
+        mesa = hover_data['points'][0]['customdata'][0]
+
+        aux1 = general_election.loc[general_election.mesa == mesa].copy()
+        aux1.loc[:, 'Elección'] = 'General'
+        aux1 = aux1[cols_table]
+
+        aux2 = paso_election.loc[paso_election.mesa == mesa].copy()
+        aux2.loc[:, 'Elección'] = 'Paso'
+        aux2 = aux2[cols_table]
+
+        data = pd.concat([aux1, aux2])
+        for col in cols_table[2:]:
+            data[col] = pd.Series(["{0:.2f}%".format(val * 100) for val in data[col]], index=data.index)
+
+        data = data.to_dict('records')
+        table = html.Div([
+            dcc.Markdown('''***Resultados de la elección***'''),
+            dash_table.DataTable(
+                id='table',
+                columns=[{"name": i, "id": i} for i in cols_table],
+                data=data,
+                style_cell={'width': '300px',
+                            'height': '60px',
+                            'textAlign': 'center'}
+            )
+        ])
+
+        return table
 
 
 @app.callback(
