@@ -31,26 +31,13 @@ data_loc = './geographical_data/buenos_aires.geojson'
 with open(data_loc) as open_file:
     geojson = json.load(open_file)
 
-# Map
-council = 'PILAR'
-LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
-# geojson = ds.get_geo_polygons()
-counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
-dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
-dat = dat.loc[dat.Municipios.str.upper() == council]
-fig_map = px.choropleth_mapbox(dat,
-                               geojson=geojson,
-                               locations="Municipios",
-                               featureidkey="properties.nombre",
-                               center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
-                               mapbox_style="carto-positron",
-                               zoom=11,
-                               opacity=0.2)  # color="Votes",
 
 colors = {
     'background': '#222',
     'text': '#fff'
 }
+
+council = 'PILAR'
 
 # Dashboard
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
@@ -73,7 +60,7 @@ app.layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(dcc.Graph(id='pie_chart'), width=6),
-                dbc.Col(dcc.Graph(figure=fig_map), width=6),
+                dbc.Col(dcc.Graph(id='googleMap'), width=6),
             ]
         ),
 
@@ -291,11 +278,44 @@ def update_volatility_chart(serialized_data,
     return fig_volatility
 
 
+@app.callback([Output('pie_chart', 'figure'),
+               Output('googleMap', 'figure')],
+              [Input('intermediate-data', 'children'),
+               Input('intermediate-parties', 'children')])
+def update_pie_google_maps(serialized_data, serialized_political_parties):
+    general_election = pd.read_json(serialized_data, orient='split')
+    political_parties = json.loads(serialized_political_parties)
+    results = pd.DataFrame(general_election[political_parties].mean(axis=0).reset_index())
+    results.columns = ['Partidos Politicos', 'Porcentage Votos']
+    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
+    results.reset_index(drop=True, inplace=True)
+
+    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
+    fig_pie.update_layout()
+
+    # Map
+    LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
+    # geojson = ds.get_geo_polygons()
+    counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
+    dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
+    dat = dat.loc[dat.Municipios.str.upper() == council]
+    googleMap = px.choropleth_mapbox(dat,
+                                     geojson=geojson,
+                                     locations="Municipios",
+                                     featureidkey="properties.nombre",
+                                     center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
+                                     mapbox_style="carto-positron",
+                                     zoom=11,
+                                     opacity=0.2)  # color="Votes",
+    googleMap.update_layout()
+
+    return fig_pie, googleMap
+
+
 @app.callback(
-    [Output('pie_chart', 'figure'),
-     Output('scatter', 'figure'),
+    [Output('scatter', 'figure'),
      Output('hbar', 'figure'),
-     Output('scatter-localidad', 'figure')],  #
+     Output('scatter-localidad', 'figure')],
     [Input('intermediate-data', 'children'),
      Input('intermediate-parties', 'children'),
      Input('dropdown-localidad', 'value'),
@@ -306,22 +326,19 @@ def update_volatility_chart(serialized_data,
      Input('dropdown-hbar', 'value')]
 )
 def update_charts(serialized_data,
-                          serialized_political_parties,
-                          dropdown_localidad,
-                          dropdown_localidad_partido,
-                          dropdown_localidad_feature,
-                          dropdown1,
-                          dropdown2,
-                          dropdown):
+                  serialized_political_parties,
+                  dropdown_localidad,
+                  dropdown_localidad_partido,
+                  dropdown_localidad_feature,
+                  dropdown1,
+                  dropdown2,
+                  dropdown):
     general_election = pd.read_json(serialized_data, orient='split')
     political_parties = json.loads(serialized_political_parties)
     results = pd.DataFrame(general_election[political_parties].mean(axis=0).reset_index())
     results.columns = ['Partidos Politicos', 'Porcentage Votos']
     results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
     results.reset_index(drop=True, inplace=True)
-
-    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
-    fig_pie.update_layout()
 
     pearson_r = general_election[dropdown1].corr(general_election[dropdown2])
     fig_scatter = px.scatter(general_election,
@@ -366,7 +383,7 @@ def update_charts(serialized_data,
                                         font_color=colors['text']
                                         )
 
-    return fig_pie, fig_scatter, fig_bar, fig_scatter_localidad
+    return fig_scatter, fig_bar, fig_scatter_localidad
 
 
 if __name__ == "__main__":
