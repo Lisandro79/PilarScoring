@@ -6,7 +6,7 @@ import json
 # Select initial Municipio and voting booths, Filter valid votes
 ds = DataSource()
 council = 'PILAR'
-data, data_paso, volatility, parties = ds.select_council(year=2019,
+data, data_paso, volatility, parties = ds.select_council(year=2017,
                                                          election_type='municipales',
                                                          council=council)
 localidades = ds.electoral_roll.localidad.unique()

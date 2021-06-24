@@ -122,7 +122,7 @@ app.layout = dbc.Container(
         # Section 3: Resultados desagregados por Localidad, Mesa por Mesa
         html.H1(
             children=[html.Br(),
-                      "Resultados de las elecciones paso versus resultados de la elección general. "
+                      "Resultados Paso vs Elección General. "
                       ]
         ),
         html.P(
@@ -439,7 +439,8 @@ def update_charts(serialized_data,
                      hover_data=["mesa"],
                      labels={'value': "Porcentage Votos", 'y': '', 'variable': 'Partidos Politicos'},
                      color_discrete_sequence=["red", "blue", "yellow", "green", "magenta", "goldenrod"],
-                     height=450)
+                     height=750,
+                     width=1500)
     fig_bar.update_layout(plot_bgcolor=colors['background'],
                           paper_bgcolor=colors['background'],
                           font_color=colors['text']

@@ -21,7 +21,7 @@ class DataSource:
     # Load data
     @staticmethod
     def load_election_results():
-        elections = pd.read_csv('./dataset/agregados/Nuevo_elecciones_09_19.csv', low_memory=False)
+        elections = pd.read_csv('./dataset/agregados/elecciones_09_19.csv', low_memory=False)
         elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'mesa', 'codigo_voto',
                              'cant_votos']
 
@@ -35,7 +35,7 @@ class DataSource:
 
     @staticmethod
     def load_political_parties():
-        political_party = pd.read_csv('./dataset/agregados/Nuevo_codigo_votos_09_19.csv', low_memory=False)
+        political_party = pd.read_csv('./dataset/agregados/codigo_votos_09_19.csv', low_memory=False)
         columns = ['anio', 'codigo_voto', 'nombre_partido']
         political_party.columns = columns
 
