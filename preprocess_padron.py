@@ -27,7 +27,7 @@ def process_booth_demographics():
                              labels=['18-25', '25-35', '35-45', '45-55', '55-65', '65-75', '75'])
 
     # 'pVotos', 'Localidad', 'Mesa', 'pMale', 'pFemale', '18-25', '25-35', '35-45', '45-55', '55-65', '65-75', '>75'
-    new_cols = ['Localidad', 'Mesa', 'pMale', 'pFemale',
+    new_cols = ['Localidad', 'Mesa', 'school', 'pMale', 'pFemale',
                 '18-25', '25-35', '35-45', '45-55', '55-65', '65-75', '>75',
                 '18-25_m', '25-35_m', '35-45_m', '45-55_m', '55-65_m', '65-75_m', '>75_m',
                 '18-25_f', '25-35_f', '35-45_f', '45-55_f', '55-65_f', '65-75_f', '>75_f'
@@ -45,6 +45,8 @@ def process_booth_demographics():
         # symbols['Mesa'].get_group(692)
 
         for mesa, group in mesas:
+            school = loc.loc[loc.Mesa == mesa]['ESCUELA'].unique()
+            school = school[0]
             gen = group['Sexo'].value_counts(normalize=True) * 100
             age = group['edad_bin'].value_counts(normalize=True) * 100
 
@@ -54,7 +56,7 @@ def process_booth_demographics():
             age_m = male['edad_bin'].value_counts(normalize=True) * 100
 
             dataset.loc[i] = [
-                localidad, mesa, gen.M, gen.F,
+                localidad, mesa, school, gen.M, gen.F,
                 age['18-25'], age['25-35'], age['35-45'], age['45-55'], age['55-65'], age['65-75'], age['75'],
                 age_f['18-25'], age_f['25-35'], age_f['35-45'], age_f['45-55'], age_f['55-65'], age_f['65-75'], age_f['75'],
                 age_m['18-25'], age_m['25-35'], age_m['35-45'], age_m['45-55'], age_m['55-65'], age_m['65-75'], age_m['75']
@@ -64,19 +66,10 @@ def process_booth_demographics():
     dataset.to_csv('./dataset/demographics_mesa_2019.csv', index=False)
 
 
-# # Election 2017
-# # Select initial Municipio and voting booths, Filter valid votes
-# ds = DataSource()
-council = 'PILAR'
-# data, data_paso, volatility, parties = ds.select_council(year=2017,
-#                                                          election_type='municipales',
-#                                                          council=council)
-# localidades = ds.electoral_roll.localidad.unique()
-# features = ds.electoral_roll.columns[2:]
-
-# process_booth_demographics()
+process_booth_demographics()
 
 # Select initial Municipio and voting booths, Filter valid votes
+council = 'PILAR'
 ds = DataSource()
 data, data_paso, volatility, parties = ds.select_council(year=2019,
                                                          election_type='municipales',

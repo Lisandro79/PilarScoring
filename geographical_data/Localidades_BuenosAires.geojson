@@ -395,7 +395,6 @@
 { "type": "Feature", "properties": { "id": "06410010001", "nombre": "ITUZAINGO CENTRO" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.688489332955001, -34.644055116120299 ] ] } },
 { "type": "Feature", "properties": { "id": "06410010002", "nombre": "ITUZAINGO SUR" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.673304415783498, -34.669943026569896 ] ] } },
 { "type": "Feature", "properties": { "id": "06410010003", "nombre": "VILLA GOBERNADOR UDAONDO" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.693287500008999, -34.616869580894402 ] ] } },
-{ "type": "Feature", "properties": { "id": "06412010001", "nombre": "DEL VISO" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.804258898399397, -34.480495794912997 ] ] } },
 { "type": "Feature", "properties": { "id": "06412010002", "nombre": "JOSE C. PAZ" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.770881112578003, -34.521161196546402 ] ] } },
 { "type": "Feature", "properties": { "id": "06412010003", "nombre": "TORTUGUITAS" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.786378031619101, -34.491848398720599 ] ] } },
 { "type": "Feature", "properties": { "id": "06413010000", "nombre": "AGUSTIN ROCA" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -60.864895654631397, -34.508084406003 ] ] } },
