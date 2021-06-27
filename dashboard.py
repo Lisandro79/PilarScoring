@@ -43,7 +43,7 @@ with open(data_loc) as open_file:
             coordinates = localidad['geometry']['coordinates']
             name = localidad['properties']['nombre']
             # print(f'{name}, lat: {coordinates[0][0]}, lon: {coordinates[0][1]}')
-            geo_localidad.loc[idx] = [name, coordinates[0][0], coordinates[0][1]]
+            geo_localidad.loc[idx] = [name, coordinates[0][1], coordinates[0][0]]
 
 colors = {
     'background': '#222',
@@ -304,7 +304,7 @@ def update_votos_centro(dropdown_votos_centro):
     results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
     results.reset_index(drop=True, inplace=True)
 
-    number_booths = 50
+    number_booths = 200
 
     if dropdown_votos_centro in ['2019', '2019_paso']:
         center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
@@ -320,7 +320,7 @@ def update_votos_centro(dropdown_votos_centro):
         data_filt = data.iloc[0:number_booths]
         data_map = data_filt['Localidad'].value_counts(normalize=True).reset_index()
         data_map['Localidad'] = data_map['Localidad'] * 100
-        data_map.columns = ['localidad', 'Booths']
+        data_map.columns = ['localidad', 'Porcentaje Mesas']
         df = geo_localidad.copy(deep=True)
 
         data_map = data_map.merge(df, how='inner', on='localidad')
@@ -348,17 +348,19 @@ def update_votos_centro(dropdown_votos_centro):
     dat = dat.loc[dat.Municipios.str.upper() == council]
 
     # px.set_mapbox_access_token(open(".mapbox_token").read())
-    googleMap = px.scatter_mapbox(data_map,
-                                  lat="lat",
-                                  lon="lon",
-                                  # color="Booths",
-                                  size="Booths",
-                                  color_continuous_scale=px.colors.cyclical.IceFire,
-                                  mapbox_style="carto-positron",
-                                  size_max=100,
-                                  zoom=11)
+    map_fig = px.scatter_mapbox(data_map,
+                                lat="lat",
+                                lon="lon",
+                                color="Porcentaje Mesas",
+                                size="Porcentaje Mesas",
+                                color_continuous_scale=px.colors.sequential.Turbo,
+                                size_max=20,
+                                zoom=10)
 
-    # import plotly.graph_objects as go
+    map_fig.update_layout(mapbox_style="open-street-map")
+
+
+# import plotly.graph_objects as go
     #
     # googleMap = go.Figure(px.choropleth_mapbox(
     #     px.choropleth_mapbox(dat,
@@ -393,9 +395,8 @@ def update_votos_centro(dropdown_votos_centro):
     #                                  mapbox_style="carto-positron",
     #                                  zoom=11,
     #                                  opacity=0.2)  # color="Votes",
-    googleMap.update_layout()
 
-    return table, googleMap
+    return table, map_fig
 
 
 @app.callback(Output('fig_volatility', 'figure'),
@@ -540,16 +541,19 @@ def update_charts(serialized_data,
 
     pearson_r = general_election[dropdown1].corr(general_election[dropdown2])
     pearson_r = '{:,.2f}'.format(pearson_r)
-    fig_scatter = px.scatter(general_election,
-                             x=dropdown1,
-                             y=dropdown2,
-                             hover_data=['mesa'],
-                             color=dropdown2,
-                             title=f"Pearson's R: {pearson_r}")
-    fig_scatter.update_layout(plot_bgcolor=colors['background'],
-                              paper_bgcolor=colors['background'],
-                              font_color=colors['text']
-                              )
+    try:
+        fig_scatter = px.scatter(general_election,
+                                 x=dropdown1,
+                                 y=dropdown2,
+                                 hover_data=['mesa'],
+                                 color=dropdown2,
+                                 title=f"Pearson's R: {pearson_r}")
+        fig_scatter.update_layout(plot_bgcolor=colors['background'],
+                                  paper_bgcolor=colors['background'],
+                                  font_color=colors['text']
+                                  )
+    except ValueError:
+        print('hey')
 
     # Voting Booths, horizontal bar plot
     sorted_by_winner = general_election.sort_values(by=[dropdown])
