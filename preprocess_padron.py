@@ -1,7 +1,6 @@
 from data_source import DataSource
 import pandas as pd
 import pickle
-import openpyxl
 
 
 def process_booth_demographics():

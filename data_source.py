@@ -9,7 +9,7 @@ class DataSource:
         self.political_parties, self.political_party_paso = self.load_political_parties()
         self.elections, self.paso = self.load_election_results()
         self.councils = self.load_councils()
-        # self.electoral_roll = self.load_electoral_roll()
+        self.electoral_roll = self.load_electoral_roll()
 
     @staticmethod
     def load_political_parties():
