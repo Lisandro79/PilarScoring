@@ -58,6 +58,9 @@ app.layout = dbc.Container(
                            marks={2019: '2019'})
                 ),
 
+        dbc.Row(dbc.Col(dcc.Graph(id='pie_chart'), width=6)),
+
+        html.H2(children=f"Votos Centro"),
         dbc.Row(
             [
                 dbc.Col(dcc.Graph(id='pie_chart'), width=6),
