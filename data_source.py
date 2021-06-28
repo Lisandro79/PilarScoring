@@ -128,6 +128,7 @@ class DataSource:
         volatility.index.name = None
 
         general_election = pd.merge(general_election, self.electoral_roll, on='mesa')
+        paso_election = pd.merge(paso_election, self.electoral_roll, on='mesa')
         volatility = pd.merge(volatility, self.electoral_roll, on='mesa')
 
         return general_election, paso_election, volatility, parties

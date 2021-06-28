@@ -66,7 +66,7 @@ def process_booth_demographics():
     dataset.to_csv('./dataset/demographics_mesa_2019.csv', index=False)
 
 
-process_booth_demographics()
+# process_booth_demographics()
 
 # Select initial Municipio and voting booths, Filter valid votes
 council = 'PILAR'
