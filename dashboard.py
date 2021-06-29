@@ -1,17 +1,16 @@
-import pandas as pd
-import numpy as np
-import dash
-from os import path
-import random
 import json
 import pickle
-import plotly.express as px
+from os import path
+
+import dash
+import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
-import dash_bootstrap_components as dbc
 import dash_table
-
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from dash.dependencies import Input, Output
 
 data_dir = './data/'
 general_election = pd.read_csv(path.join(data_dir, 'generales.csv'))
@@ -101,11 +100,11 @@ app.layout = dbc.Container(
             ]
         ),
 
-        html.H4(children=f"Seleccione las mesas"),
+        html.H4(children=f"Seleccione el número de mesas"),
         dcc.Slider(id='map-slider', min=1, max=700, step=1, value=50,
                    marks={i: f'{i}' for i in range(0, 700, 50)}),
-        html.H4(children=f"\n"),
-
+        html.H4(children=f"Top mesas seleccionadas: "),
+        html.Div(id='map-slider-value', style={'whiteSpace': 'pre-line'}),
 
         # Section 2a: Resultados generales de Pilar, mesa por mesa
         html.H2(
@@ -255,6 +254,7 @@ app.layout = dbc.Container(
      Output('intermediate-paso', 'children'),
      Output('intermediate-volatility', 'children'),
      Output('intermediate-parties', 'children'),
+     Output('pie_chart', 'figure'),
      Output('dropdown-localidad', 'options'),
      Output('dropdown-localidad-partidos', 'options'),
      Output('dropdown-localidad-features', 'options'),
@@ -277,12 +277,23 @@ def update_dataframe(selected_year):
     formatted_localidades = [{'label': i, 'value': i} for i in localidades]
     form_feats = [{'label': i, 'value': i} for i in features]
     formatted_features = [feature for feature in form_feats if feature['label'] != 'school']
+
+    results = pd.DataFrame(general_election[parties].mean(axis=0).reset_index())
+
+    results.columns = ['Partidos Politicos', 'Porcentage Votos']
+    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
+    results.reset_index(drop=True, inplace=True)
+
+    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
+    fig_pie.update_layout()
+
     formatted_political_parties = [{'label': i, 'value': i} for i in parties]
 
     return general_election.to_json(date_format='iso', orient='split'), \
            paso_election.to_json(date_format='iso', orient='split'), \
            volatility.to_json(date_format='iso', orient='split'), \
            json.dumps(parties), \
+           fig_pie, \
            formatted_localidades, \
            formatted_political_parties, \
            formatted_features, \
@@ -302,7 +313,8 @@ def update_dataframe(selected_year):
 
 
 @app.callback([Output('votos-centro-table', 'children'),
-               Output('googleMap', 'figure')],
+               Output('googleMap', 'figure'),
+               Output('map-slider-value', 'children')],
               [Input('intermediate-election', 'children'),
                Input('intermediate-paso', 'children'),
                Input('intermediate-parties', 'children'),
@@ -343,6 +355,8 @@ def update_votos_centro(serialized_data,
     data_map = data_filt['Localidad'].value_counts(normalize=True).reset_index()
     data_map['Localidad'] = data_map['Localidad'] * 100
     data_map.columns = ['localidad', 'Porcentaje Mesas']
+    assert round(data_map['Porcentaje Mesas'].sum()) == 100
+
     df = geo_localidad.copy(deep=True)
 
     data_map = data_map.merge(df, how='inner', on='localidad')
@@ -372,50 +386,7 @@ def update_votos_centro(serialized_data,
 
     map_fig.update_layout(mapbox_style="open-street-map")
 
-
-    # import plotly.graph_objects as go
-    #
-    # googleMap = go.Figure(px.choropleth_mapbox(
-    #     px.choropleth_mapbox(dat,
-    #                          geojson=geojson,
-    #                          locations="Municipios",
-    #                          featureidkey="properties.nombre",
-    #                          center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
-    #                          mapbox_style='carto-positron',
-    #                          zoom=11,
-    #                          opacity=0.2)))  # color="Votes",)  # here you set all attributes needed for a Choroplethmapbox
-    # googleMap.add_scattermapbox(lat=[-34.45866],
-    #                             lon=[-58.9142],
-    #                             mode='markers+text',
-    #                             text='Test',  #a list of strings, one  for each geographical position  (lon, lat)
-    #                             below='',
-    #                             marker_size=12,
-    #                             marker_color='rgb(235, 0, 100)')
-
-    # googleMap.update_layout((title_text ='Your plot title', title_x =0.5,
-    #                         mapbox = dict(center= dict(lat=52.370216, lon=4.895168),  #change to the center of your map
-    #                                           accesstoken= "your-mapbox-access-token",
-    #                                           zoom=6, #change this value correspondingly, for your map
-    #                                           style="light"  # set your prefered mapbox style
-    #                                           ))
-
-
-    # Map
-    # LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
-    # counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
-    # dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
-    # dat = dat.loc[dat.Municipios.str.upper() == council]
-
-    # googleMap = px.choropleth_mapbox(dat,
-    #                                  geojson=geojson,
-    #                                  locations="Municipios",
-    #                                  featureidkey="properties.nombre",
-    #                                  center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
-    #                                  mapbox_style="carto-positron",
-    #                                  zoom=11,
-    #                                  opacity=0.2)  # color="Votes",
-
-    return table, map_fig
+    return table, map_fig, number_booths
 
 
 @app.callback(Output('fig_volatility', 'figure'),
@@ -512,23 +483,6 @@ def display_first_table(hover_data):
         return table
 
 
-@app.callback(Output('pie_chart', 'figure'),
-              [Input('intermediate-election', 'children'),
-               Input('intermediate-parties', 'children')])
-def update_pie_google_maps(serialized_data, serialized_political_parties):
-    election_2019 = pd.read_json(serialized_data, orient='split')
-    political_parties = json.loads(serialized_political_parties)
-    results = pd.DataFrame(election_2019[political_parties].mean(axis=0).reset_index())
-    results.columns = ['Partidos Politicos', 'Porcentage Votos']
-    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
-    results.reset_index(drop=True, inplace=True)
-
-    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
-    fig_pie.update_layout()
-
-    return fig_pie
-
-
 @app.callback(
     [Output('scatter', 'figure'),
      Output('hbar', 'figure'),
@@ -571,8 +525,6 @@ def update_charts(serialized_data,
                               paper_bgcolor=colors['background'],
                               font_color=colors['text']
                               )
-    # except ValueError:
-    #     print('hey')
 
     # Voting Booths, horizontal bar plot
     sorted_by_winner = election_2019.sort_values(by=[dropdown])
@@ -631,9 +583,55 @@ if __name__ == "__main__":
 
 
 # ToDo
-#  Add slider for the number of voting booths.
+#  Add data from elections_2017.
+#  Assert sum of percentages for the map plots
+#  Show results of election by localidad
+#  show voting profile of each localidad
 #  Add bar plot with the localidades and number of voting booths.
 #  Add cumulative subplot to show the majority of voting booths in each location.
-#  Add data from paso2019 and elections_2017.
 #  Make a map with the localidades that got the LEAST amount of votes for the "center" (e.g., Derqui)
 
+
+
+
+# import plotly.graph_objects as go
+#
+# googleMap = go.Figure(px.choropleth_mapbox(
+#     px.choropleth_mapbox(dat,
+#                          geojson=geojson,
+#                          locations="Municipios",
+#                          featureidkey="properties.nombre",
+#                          center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
+#                          mapbox_style='carto-positron',
+#                          zoom=11,
+#                          opacity=0.2)))  # color="Votes",)  # here you set all attributes needed for a Choroplethmapbox
+# googleMap.add_scattermapbox(lat=[-34.45866],
+#                             lon=[-58.9142],
+#                             mode='markers+text',
+#                             text='Test',  #a list of strings, one  for each geographical position  (lon, lat)
+#                             below='',
+#                             marker_size=12,
+#                             marker_color='rgb(235, 0, 100)')
+
+# googleMap.update_layout((title_text ='Your plot title', title_x =0.5,
+#                         mapbox = dict(center= dict(lat=52.370216, lon=4.895168),  #change to the center of your map
+#                                           accesstoken= "your-mapbox-access-token",
+#                                           zoom=6, #change this value correspondingly, for your map
+#                                           style="light"  # set your prefered mapbox style
+#                                           ))
+
+
+# Map
+# LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
+# counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
+# dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
+# dat = dat.loc[dat.Municipios.str.upper() == council]
+
+# googleMap = px.choropleth_mapbox(dat,
+#                                  geojson=geojson,
+#                                  locations="Municipios",
+#                                  featureidkey="properties.nombre",
+#                                  center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
+#                                  mapbox_style="carto-positron",
+#                                  zoom=11,
+#                                  opacity=0.2)  # color="Votes",
