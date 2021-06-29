@@ -41,7 +41,6 @@ with open(data_loc) as open_file:
         if localidad['properties']['nombre'].lower() in lower_localidades:
             coordinates = localidad['geometry']['coordinates']
             name = localidad['properties']['nombre']
-            # print(f'{name}, lat: {coordinates[0][0]}, lon: {coordinates[0][1]}')
             geo_localidad.loc[idx] = [name, coordinates[0][1], coordinates[0][0]]
 
 colors = {
@@ -101,7 +100,7 @@ app.layout = dbc.Container(
         ),
 
         html.H4(children=f"Seleccione el número de mesas"),
-        dcc.Slider(id='map-slider', min=1, max=700, step=1, value=50,
+        dcc.Slider(id='map-slider', min=1, max=700, step=1, value=700,
                    marks={i: f'{i}' for i in range(0, 700, 50)}),
         html.H4(children=f"Top mesas seleccionadas: "),
         html.Div(id='map-slider-value', style={'whiteSpace': 'pre-line'}),
@@ -355,11 +354,12 @@ def update_votos_centro(serialized_data,
     data_map = data_filt['Localidad'].value_counts(normalize=True).reset_index()
     data_map['Localidad'] = data_map['Localidad'] * 100
     data_map.columns = ['localidad', 'Porcentaje Mesas']
-    assert round(data_map['Porcentaje Mesas'].sum()) == 100
 
     df = geo_localidad.copy(deep=True)
 
     data_map = data_map.merge(df, how='inner', on='localidad')
+    assert round(data_map['Porcentaje Mesas'].sum()) == 100
+
     table_data = data.to_dict('records')
 
     table = html.Div([
