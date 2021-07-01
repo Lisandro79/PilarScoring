@@ -90,7 +90,7 @@ class DataSource:
         df = df.loc[df['mesa'].isin(common_voting_booths)]
 
         for code in ps.codigo_voto.unique():
-            party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido']\
+            party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido'] \
                 .values
             ps.loc[ps.codigo_voto == code, 'nombre_partido'] = party[0]
 
@@ -118,16 +118,34 @@ class DataSource:
 
         general_election = df.pivot(index='mesa', columns='nombre_partido', values='prop_votos')
         paso_election = paso.pivot(index='mesa', columns='nombre_partido', values='prop_votos')
+
+        general_election_cant_votos = df.pivot(index='mesa', columns='nombre_partido', values='cant_votos')
+        paso_election_cant_votos = paso.pivot(index='mesa', columns='nombre_partido', values='cant_votos')
+
+        # modify column names to avoid conflicts
+        new_cols = [col + ' cant' for col in general_election_cant_votos.columns]
+        general_election_cant_votos.columns = new_cols
+
+        new_cols = [col + ' cant' for col in paso_election_cant_votos.columns]
+        paso_election_cant_votos.columns = new_cols
+
         volatility = general_election - paso_election
         volatility.insert(0, 'mesa', df['mesa'].unique())
         general_election.insert(0, 'mesa', df['mesa'].unique())
+        general_election_cant_votos.insert(0, 'mesa', df['mesa'].unique())
         paso_election.insert(0, 'mesa', paso['mesa'].unique())
+        paso_election_cant_votos.insert(0, 'mesa', paso['mesa'].unique())
 
         general_election.index.name = None
+        general_election_cant_votos.index.name = None
         paso_election.index.name = None
+        paso_election_cant_votos.index.name = None
         volatility.index.name = None
 
+        general_election = pd.merge(general_election, general_election_cant_votos, on='mesa')
         general_election = pd.merge(general_election, self.electoral_roll, on='mesa')
+
+        paso_election = pd.merge(paso_election, paso_election_cant_votos, on='mesa')
         paso_election = pd.merge(paso_election, self.electoral_roll, on='mesa')
         volatility = pd.merge(volatility, self.electoral_roll, on='mesa')
 

@@ -100,7 +100,7 @@ app.layout = dbc.Container(
         ),
 
         html.H4(children=f"Seleccione el número de mesas"),
-        dcc.Slider(id='map-slider', min=1, max=700, step=1, value=700,
+        dcc.Slider(id='map-slider', min=1, max=700, step=1, value=50,
                    marks={i: f'{i}' for i in range(0, 700, 50)}),
         html.H4(children=f"Top mesas seleccionadas: "),
         html.Div(id='map-slider-value', style={'whiteSpace': 'pre-line'}),
@@ -289,26 +289,26 @@ def update_dataframe(selected_year):
     formatted_political_parties = [{'label': i, 'value': i} for i in parties]
 
     return general_election.to_json(date_format='iso', orient='split'), \
-           paso_election.to_json(date_format='iso', orient='split'), \
-           volatility.to_json(date_format='iso', orient='split'), \
-           json.dumps(parties), \
-           fig_pie, \
-           formatted_localidades, \
-           formatted_political_parties, \
-           formatted_features, \
-           formatted_localidades, \
-           formatted_political_parties, \
-           localidades[0], \
-           parties[1], \
-           features[1], \
-           localidades[0], \
-           parties[1], \
-           formatted_political_parties, \
-           formatted_political_parties, \
-           parties[1], \
-           parties[3], \
-           parties[1], \
-           formatted_political_parties
+        paso_election.to_json(date_format='iso', orient='split'), \
+        volatility.to_json(date_format='iso', orient='split'), \
+        json.dumps(parties), \
+        fig_pie, \
+        formatted_localidades, \
+        formatted_political_parties, \
+        formatted_features, \
+        formatted_localidades, \
+        formatted_political_parties, \
+        localidades[0], \
+        parties[1], \
+        features[1], \
+        localidades[0], \
+        parties[1], \
+        formatted_political_parties, \
+        formatted_political_parties, \
+        parties[1], \
+        parties[3], \
+        parties[1], \
+        formatted_political_parties
 
 
 @app.callback([Output('votos-centro-table', 'children'),
@@ -583,15 +583,11 @@ if __name__ == "__main__":
 
 
 # ToDo
+#  Agregar cantidad votos paso y general a la tabla. Mostrar numero total de votantes en el mapa (hover).
+#  Remove dropdown menu from table
 #  Add data from elections_2017.
-#  Assert sum of percentages for the map plots
-#  Show results of election by localidad
-#  show voting profile of each localidad
-#  Add bar plot with the localidades and number of voting booths.
+#  Add absolute number of votos centro per localidad (more precise to search people)
 #  Add cumulative subplot to show the majority of voting booths in each location.
-#  Make a map with the localidades that got the LEAST amount of votes for the "center" (e.g., Derqui)
-
-
 
 
 # import plotly.graph_objects as go

@@ -944,7 +944,7 @@
 { "type": "Feature", "properties": { "id": "02105010004", "nombre": "PATERNAL" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.468665294067399, -34.5974220425569 ] ] } },
 { "type": "Feature", "properties": { "id": "02105010005", "nombre": "VILLA CRESPO" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.442722141297402, -34.5988344062647 ] ] } },
 { "type": "Feature", "properties": { "id": "02105010006", "nombre": "VILLA ORTUZAR" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.467651666433902, -34.5809741138535 ] ] } },
-{ "type": "Feature", "properties": { "id": "02105010006", "nombre": "MANUEL ALBERTI" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.780553, -34.436628] ] } },
+{ "type": "Feature", "properties": { "id": "02105010006", "nombre": "MANUEL ALBERTI" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.775176, -34.462255] ] } },
 { "type": "Feature", "properties": { "id": "02105010006", "nombre": "LAGOMARSINO" }, "geometry": { "type": "MultiPoint", "coordinates": [ [ -58.778789, -34.415773  ] ] } }
 ]
 }
