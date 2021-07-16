@@ -11,21 +11,30 @@ class DataSource:
         self.councils = self.load_councils()
         self.electoral_roll = self.load_electoral_roll()
 
-    # Load data
     @staticmethod
-    def load_electoral_roll():
-        electoral_roll = pd.read_csv('./dataset/padron.csv')
-        electoral_roll.columns = electoral_roll.columns.str.lower()
-        return electoral_roll
+    def load_political_parties():
+        political_party = pd.read_csv('./dataset/codigo_votos_09_19.csv', low_memory=False)
+        columns = ['anio', 'codigo_voto', 'nombre_partido']
+        political_party.columns = columns
 
-    # Load data
+        political_party_paso = pd.read_csv('./dataset/paso_2019/codigo_votos.csv',
+                                           sep=';',
+                                           low_memory=False)
+        columns = ['id_eleccion', 'eleccion', 'codigo_voto', 'nombre_partido', 'id_lista', 'lista']
+        political_party_paso.columns = columns
+        political_party_paso.insert(0, 'anio', 2019)
+        political_party_paso = political_party_paso.drop(['id_eleccion', 'eleccion', 'id_lista', 'lista'], axis=1) \
+            .sort_values(by=['codigo_voto']).drop_duplicates(subset=['codigo_voto'])
+
+        return political_party, political_party_paso
+
     @staticmethod
     def load_election_results():
-        elections = pd.read_csv('./dataset/agregados/Nuevo_elecciones_09_19.csv', low_memory=False)
+        elections = pd.read_csv('./dataset/resultados_electorales_09_19.csv', low_memory=False)
         elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'mesa', 'codigo_voto',
                              'cant_votos']
 
-        paso = pd.read_csv('./dataset/paso_2019/resultados_mesas.csv', sep=';', low_memory=False)
+        paso = pd.read_csv('./dataset/paso_2019/resultados_electorales.csv', sep=';', low_memory=False)
         paso.columns = ['id_provincia', 'id_municipio', 'circuito', 'mesa', 'id_eleccion', 'codigo_voto',
                         'id_lista', 'cant_votos']
         paso.insert(0, 'year', 2019)
@@ -34,27 +43,16 @@ class DataSource:
         return elections, paso
 
     @staticmethod
-    def load_political_parties():
-        political_party = pd.read_csv('./dataset/agregados/Nuevo_codigo_votos_09_19.csv', low_memory=False)
-        columns = ['anio', 'codigo_voto', 'nombre_partido']
-        political_party.columns = columns
-
-        political_party_paso = pd.read_csv('./dataset/paso_2019/descripcion_postulaciones.csv',
-                                           sep=';',
-                                           low_memory=False)
-        columns = ['id_eleccion', 'eleccion', 'codigo_voto', 'nombre_partido', 'id_lista', 'lista']
-        political_party_paso.columns = columns
-        political_party_paso.insert(0, 'anio', 2019)
-        political_party_paso = political_party_paso.drop(['id_eleccion', 'eleccion', 'id_lista', 'lista'], axis=1)\
-            .sort_values(by=['codigo_voto']).drop_duplicates(subset=['codigo_voto'])
-
-        return political_party, political_party_paso
-
-    @staticmethod
-    def load_councils(dataset='./dataset/agregados/municipios_aglo.csv'):
+    def load_councils(dataset='./dataset/municipios_aglo.csv'):
         councils = pd.read_csv(dataset, low_memory=False, encoding='ISO-8859-1')
         councils.columns = ['id_municipio', 'provincia', 'id_aglomerado', 'municipio']
         return councils
+
+    @staticmethod
+    def load_electoral_roll(dataset='./dataset/demographics_mesa_2017.csv'):
+        electoral_roll = pd.read_csv(dataset)
+        electoral_roll.columns = electoral_roll.columns.str.lower()
+        return electoral_roll
 
     def select_council(self, year=2019, election_type='municipales', council='PILAR'):
         id_council = self.get_council_id(council)
@@ -66,7 +64,7 @@ class DataSource:
         df.insert(4, 'nombre_partido', '')
         df.insert(5, 'prop_votos', '')
 
-        parties = self.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
+        parties = self.get_council_parties(year, vote_ids=df.codigo_voto.unique())
 
         for code in df.codigo_voto.unique():
             party = self.political_parties.loc[(self.political_parties['codigo_voto'] == code) &
@@ -92,9 +90,13 @@ class DataSource:
         df = df.loc[df['mesa'].isin(common_voting_booths)]
 
         for code in ps.codigo_voto.unique():
-            party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido']\
+            party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido'] \
                 .values
             ps.loc[ps.codigo_voto == code, 'nombre_partido'] = party[0]
+
+        # Select those Paso results with the same voting code as in the general election
+        # codigo_votos = df.codigo_voto.unique()
+        # ps = ps[ps['codigo_voto'].isin(codigo_votos)]
 
         # Calculate proportion of votes for each party
         # Return only those political parties that reached the general election
@@ -120,16 +122,35 @@ class DataSource:
 
         general_election = df.pivot(index='mesa', columns='nombre_partido', values='prop_votos')
         paso_election = paso.pivot(index='mesa', columns='nombre_partido', values='prop_votos')
+
+        general_election_cant_votos = df.pivot(index='mesa', columns='nombre_partido', values='cant_votos')
+        paso_election_cant_votos = paso.pivot(index='mesa', columns='nombre_partido', values='cant_votos')
+
+        # modify column names to avoid conflicts
+        new_cols = [col + ' cant' for col in general_election_cant_votos.columns]
+        general_election_cant_votos.columns = new_cols
+
+        new_cols = [col + ' cant' for col in paso_election_cant_votos.columns]
+        paso_election_cant_votos.columns = new_cols
+
         volatility = general_election - paso_election
         volatility.insert(0, 'mesa', df['mesa'].unique())
         general_election.insert(0, 'mesa', df['mesa'].unique())
+        general_election_cant_votos.insert(0, 'mesa', df['mesa'].unique())
         paso_election.insert(0, 'mesa', paso['mesa'].unique())
+        paso_election_cant_votos.insert(0, 'mesa', paso['mesa'].unique())
 
         general_election.index.name = None
+        general_election_cant_votos.index.name = None
         paso_election.index.name = None
+        paso_election_cant_votos.index.name = None
         volatility.index.name = None
 
+        general_election = pd.merge(general_election, general_election_cant_votos, on='mesa')
         general_election = pd.merge(general_election, self.electoral_roll, on='mesa')
+
+        paso_election = pd.merge(paso_election, paso_election_cant_votos, on='mesa')
+        paso_election = pd.merge(paso_election, self.electoral_roll, on='mesa')
         volatility = pd.merge(volatility, self.electoral_roll, on='mesa')
 
         return general_election, paso_election, volatility, parties

@@ -1,26 +1,28 @@
-import pandas as pd
-import numpy as np
-import dash
-from os import path
-import random
 import json
 import pickle
-import plotly.express as px
+from os import path
+
+import dash
+import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
-# from data_source import DataSource
-import dash_bootstrap_components as dbc
 import dash_table
-
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from dash.dependencies import Input, Output
 
 data_dir = './data/'
 general_election = pd.read_csv(path.join(data_dir, 'generales.csv'))
+general_election_2017 = pd.read_csv(path.join(data_dir, 'generales_2017.csv'))
 paso_election = pd.read_csv(path.join(data_dir, 'paso.csv'))
 volatility = pd.read_csv(path.join(data_dir, 'volatility.csv'))
 
 with open(path.join(data_dir, 'parties.pkl'), 'rb') as open_file:
     parties = pickle.load(open_file)
+
+with open(path.join(data_dir, 'parties_2017.pkl'), 'rb') as open_file:
+    parties_2017 = pickle.load(open_file)
 
 with open(path.join(data_dir, 'counties.pkl'), 'rb') as open_file:
     localidades = pickle.load(open_file)
@@ -32,6 +34,18 @@ data_loc = './geographical_data/buenos_aires.geojson'
 with open(data_loc) as open_file:
     geojson = json.load(open_file)
 
+election_type = ['2019', '2019-paso']
+
+data_loc = './geographical_data/Localidades_BuenosAires.geojson'
+with open(data_loc) as open_file:
+    geo_loc = json.load(open_file)
+    lower_localidades = [loc.lower() for loc in localidades]
+    geo_localidad = pd.DataFrame(columns=['localidad', 'lat', 'lon'])
+    for idx, localidad in enumerate(geo_loc['features']):
+        if localidad['properties']['nombre'].lower() in lower_localidades:
+            coordinates = localidad['geometry']['coordinates']
+            name = localidad['properties']['nombre']
+            geo_localidad.loc[idx] = [name, coordinates[0][1], coordinates[0][0]]
 
 colors = {
     'background': '#222',
@@ -58,12 +72,46 @@ app.layout = dbc.Container(
                            marks={2019: '2019'})
                 ),
 
+        dbc.Row([dbc.Col(dcc.Graph(id='pie_chart'), width=5),
+                 dbc.Col(dcc.Graph(id='votos_localidad'), width=5)]
+                ),
+
+        html.H2(children=f"Votos Centro"),
         dbc.Row(
             [
-                dbc.Col(dcc.Graph(id='pie_chart'), width=6),
-                dbc.Col(dcc.Graph(id='googleMap'), width=6),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.Div([
+                                dcc.Dropdown(id='dropdown-votos-centro',
+                                             options=[{'label': i, 'value': i} for i in election_type],
+                                             value=election_type[0]
+                                             ),
+                                html.Div(id='votos-centro-table')
+                                ], style={"width": "100%"}
+                            )
+                        ]
+                    ), width=10,
+                ),
+
+                dbc.Col(
+                        dcc.Graph(id='googleMap'), width=10,
+                )
             ]
         ),
+
+        html.H4(children=f"Seleccione el número de mesas"),
+        dcc.Slider(id='map-slider', min=1, max=700, step=1, value=50,
+                   marks={i: f'{i}' for i in range(0, 700, 50)}),
+        html.H4(children=f"Top mesas seleccionadas: "),
+        html.Div(id='map-slider-value', style={'whiteSpace': 'pre-line'}),
+        html.H4(children=f"Total Votantes: "),
+        html.Div(id='total_voters', style={'whiteSpace': 'pre-line'}),
+
+        html.Br(),
+        html.Br(),
+        html.H4(children=f"Elecciones 2017"),
+        dcc.Graph(id='fig_2017'),
 
         # Section 2a: Resultados generales de Pilar, mesa por mesa
         html.H2(
@@ -122,7 +170,7 @@ app.layout = dbc.Container(
         # Section 3: Resultados desagregados por Localidad, Mesa por Mesa
         html.H1(
             children=[html.Br(),
-                      "Resultados de las elecciones paso versus resultados de la elección general. "
+                      "Resultados Paso vs Elección General. "
                       ]
         ),
         html.P(
@@ -192,19 +240,216 @@ app.layout = dbc.Container(
                                       ), width=4),
                 dbc.Col(dcc.Dropdown(id='dropdown-localidad-features',
                                      options=[{'label': i, 'value': i} for i in features],
-                                     value=features[0]
+                                     value=features[1]
                                      ), width=4)
             ]
         ),
         dcc.Graph(id='scatter-localidad', className='card'),
 
         # Hidden div inside the app that stores the intermediate value
-        html.Div(id='intermediate-data', style={'display': 'none'}),
+        html.Div(id='intermediate-election', style={'display': 'none'}),
+        html.Div(id='intermediate-paso', style={'display': 'none'}),
         html.Div(id='intermediate-volatility', style={'display': 'none'}),
         html.Div(id='intermediate-parties', style={'display': 'none'}),
 
     ], fluid=True
 )
+
+
+@app.callback(
+    [Output('intermediate-election', 'children'),
+     Output('intermediate-paso', 'children'),
+     Output('intermediate-volatility', 'children'),
+     Output('intermediate-parties', 'children'),
+     Output('pie_chart', 'figure'),
+     Output('dropdown-localidad', 'options'),
+     Output('dropdown-localidad-partidos', 'options'),
+     Output('dropdown-localidad-features', 'options'),
+     Output('dropdown_county_volatility', 'options'),
+     Output('dropdown_county_parties', 'options'),
+     Output('dropdown-localidad', 'value'),
+     Output('dropdown-localidad-partidos', 'value'),
+     Output('dropdown-localidad-features', 'value'),
+     Output('dropdown_county_volatility', 'value'),
+     Output('dropdown_county_parties', 'value'),
+     Output('dropdown-scatter1', 'options'),
+     Output('dropdown-scatter2', 'options'),
+     Output('dropdown-scatter1', 'value'),
+     Output('dropdown-scatter2', 'value'),
+     Output('dropdown-hbar', 'value'),
+     Output('dropdown-hbar', 'options')],
+    Input('slider-year', 'value')
+)
+def update_dataframe(selected_year):
+    formatted_localidades = [{'label': i, 'value': i} for i in localidades]
+    form_feats = [{'label': i, 'value': i} for i in features]
+    formatted_features = [feature for feature in form_feats if feature['label'] != 'school']
+
+    results = pd.DataFrame(general_election[parties].mean(axis=0).reset_index())
+
+    results.columns = ['Partidos Politicos', 'Porcentage Votos']
+    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
+    results.reset_index(drop=True, inplace=True)
+
+    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
+    fig_pie.update_layout()
+
+    formatted_political_parties = [{'label': i, 'value': i} for i in parties]
+
+    return general_election.to_json(date_format='iso', orient='split'), \
+        paso_election.to_json(date_format='iso', orient='split'), \
+        volatility.to_json(date_format='iso', orient='split'), \
+        json.dumps(parties), \
+        fig_pie, \
+        formatted_localidades, \
+        formatted_political_parties, \
+        formatted_features, \
+        formatted_localidades, \
+        formatted_political_parties, \
+        localidades[0], \
+        parties[1], \
+        features[1], \
+        localidades[0], \
+        parties[1], \
+        formatted_political_parties, \
+        formatted_political_parties, \
+        parties[1], \
+        parties[3], \
+        parties[1], \
+        formatted_political_parties
+
+
+@app.callback([Output('votos-centro-table', 'children'),
+               Output('googleMap', 'figure'),
+               Output('votos_localidad', 'figure'),
+               Output('fig_2017', 'figure'),
+               Output('map-slider-value', 'children'),
+               Output('total_voters', 'children')],
+              [Input('intermediate-election', 'children'),
+               Input('intermediate-paso', 'children'),
+               Input('intermediate-parties', 'children'),
+               Input('dropdown-votos-centro', 'value'),
+               Input('map-slider', 'value')])
+def update_votos_centro(serialized_data,
+                        serialized_paso,
+                        serialized_political_parties,
+                        dropdown_votos_centro,
+                        number_booths):
+    election_2019 = pd.read_json(serialized_data, orient='split')
+    paso_2019 = pd.read_json(serialized_paso,  orient='split')
+    political_parties = json.loads(serialized_political_parties)
+    results = pd.DataFrame(election_2019[political_parties].mean(axis=0).reset_index())
+
+    results.columns = ['Partidos Politicos', 'Porcentage Votos']
+    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
+    results.reset_index(drop=True, inplace=True)
+
+    # Sum of votes by localidad
+    votes_localidad = election_2019.groupby(['localidad']).sum().reset_index()
+    votes_localidad = votes_localidad[['localidad', 'CONSENSO FEDERAL cant', 'FRENTE NOS cant']]
+    votes_localidad.columns = ['localidad', 'CONSENSO FEDERAL', 'FRENTE NOS']
+    number_booths_localidad = election_2019.groupby(['localidad']).count().reset_index()
+    number_booths_localidad = number_booths_localidad[['localidad', 'mesa']]
+
+    tt = votes_localidad.sum(axis=1) / number_booths_localidad['mesa']
+
+    center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
+    sum_cols = pd.DataFrame(election_2019[center_parties[0]] + election_2019[center_parties[1]])
+    sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
+                                 election_2019[center_parties[1] + ' cant'])
+    sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
+    # sum_cols_cant_paso = pd.DataFrame(paso_2019[center_parties[0] + ' cant'] +
+    #                                   paso_2019[center_parties[1] + ' cant'])
+    if dropdown_votos_centro == '2019':
+        data = pd.concat([election_2019[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
+                         axis=1, ignore_index=True)
+        columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
+    elif dropdown_votos_centro == '2019-paso':
+        data = pd.concat([paso_2019[['mesa', 'school', 'localidad']], sum_cols_paso, sum_cols_cant],
+                         axis=1, ignore_index=True)
+        columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
+
+    data.columns = columns
+    data['Porcentaje Votos'] = pd.Series([round(val * 100, 2) for val in data['Porcentaje Votos']],
+                                         index=data.index)
+    data = data.sort_values(['Porcentaje Votos'], ascending=False)
+
+    # format data to plot on map
+    data_filt = data.iloc[0:number_booths]
+    total_electors = data_filt['Cantidad Votos'].sum()
+    # print(total_electors)
+    data_map = data_filt['Localidad'].value_counts(normalize=True).reset_index()
+    data_map['Localidad'] = data_map['Localidad'] * 100
+    data_map.columns = ['localidad', 'Porcentaje Mesas']
+
+    df = geo_localidad.copy(deep=True)
+
+    data_map = data_map.merge(df, how='inner', on='localidad')
+    assert round(data_map['Porcentaje Mesas'].sum()) == 100
+
+    table_data = data.to_dict('records')
+
+    table = html.Div([
+        dash_table.DataTable(
+            id='table',
+            columns=[{"name": i, "id": i} for i in columns],
+            data=table_data,
+            page_size=8,
+            sort_action='native',
+            style_cell={'width': '250px',
+                        'height': '60px',
+                        'textAlign': 'center'}
+        )
+    ])
+
+    map_fig = px.scatter_mapbox(data_map,
+                                lat="lat",
+                                lon="lon",
+                                color="Porcentaje Mesas",
+                                size="Porcentaje Mesas",
+                                hover_data=['Porcentaje Mesas'],
+                                hover_name="Porcentaje Mesas",
+                                color_continuous_scale=px.colors.sequential.Turbo,
+                                size_max=20,
+                                zoom=10)
+    votes_fig = px.bar(votes_localidad,
+                       x='localidad',
+                       y=['CONSENSO FEDERAL', 'FRENTE NOS']
+                       )
+
+    map_fig.update_layout(mapbox_style="open-street-map")
+
+    cols_cant =[party + ' cant' for party in parties_2017]
+    results = general_election_2017[cols_cant].sum().reset_index()
+    results.columns = ['partidos', 'resultados']
+    fig_2017 = px.bar(results, x='partidos', y='resultados')
+
+    return table, map_fig, votes_fig, fig_2017, number_booths, total_electors
+
+
+@app.callback(Output('fig_volatility', 'figure'),
+              [Input('intermediate-election', 'children'),
+               Input('intermediate-parties', 'children'),
+               Input('intermediate-volatility', 'children'),
+               Input('dropdown_county_volatility', 'value'),
+               Input('dropdown_county_parties', 'value')])
+def update_volatility_chart(serialized_data,
+                            serialized_political_parties,
+                            serialized_volatility,
+                            dropdown_county_volatility,
+                            dropdown_volatility_political_party):
+    # general_election = pd.read_json(serialized_data, orient='split')
+    political_parties = json.loads(serialized_political_parties)
+    election_volatility = pd.read_json(serialized_volatility, orient='split')
+    volatility_filtered_by_county = election_volatility.loc[general_election['localidad'] == dropdown_county_volatility]
+    fig_volatility = px.scatter(volatility_filtered_by_county,
+                                x=dropdown_volatility_political_party,
+                                y=political_parties[3],
+                                hover_data=['mesa'],
+                                color_discrete_sequence=['rgba(230, 0, 0, 0.9)'])
+    fig_volatility.update_traces(marker=dict(size=10))
+
+    return fig_volatility
 
 
 @app.callback(
@@ -238,12 +483,12 @@ def display_second_table(hover_data):
 def display_first_table(hover_data):
     if hover_data is not None:
         cols_table = ['Elección',
-                       'mesa',
-                       'FRENTE DE TODOS',
-                       'JUNTOS POR EL CAMBIO',
-                       'CONSENSO FEDERAL',
-                       'FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD',
-                       'FRENTE NOS',
+                      'mesa',
+                      'FRENTE DE TODOS',
+                      'JUNTOS POR EL CAMBIO',
+                      'CONSENSO FEDERAL',
+                      'FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD',
+                      'FRENTE NOS',
                       ]
 
         mesa = hover_data['points'][0]['customdata'][0]
@@ -277,121 +522,11 @@ def display_first_table(hover_data):
 
 
 @app.callback(
-    [Output('intermediate-data', 'children'),
-     Output('intermediate-volatility', 'children'),
-     Output('intermediate-parties', 'children'),
-     Output('dropdown-localidad', 'options'),
-     Output('dropdown-localidad-partidos', 'options'),
-     Output('dropdown-localidad-features', 'options'),
-     Output('dropdown_county_volatility', 'options'),
-     Output('dropdown_county_parties', 'options'),
-     Output('dropdown-localidad', 'value'),
-     Output('dropdown-localidad-partidos', 'value'),
-     Output('dropdown-localidad-features', 'value'),
-     Output('dropdown_county_volatility', 'value'),
-     Output('dropdown_county_parties', 'value'),
-     Output('dropdown-scatter1', 'options'),
-     Output('dropdown-scatter2', 'options'),
-     Output('dropdown-scatter1', 'value'),
-     Output('dropdown-scatter2', 'value'),
-     Output('dropdown-hbar', 'value'),
-     Output('dropdown-hbar', 'options')],
-    Input('slider-year', 'value')
-)
-def update_dataframe(selected_year):
-    # general_election, _, volatility, parties = ds.select_council(year=selected_year,
-    #                                                                        election_type='municipales',
-    #                                                                        council=council)
-    formatted_localidades = [{'label': i, 'value': i} for i in localidades]
-    formatted_features = [{'label': i, 'value': i} for i in features]
-    formatted_political_parties = [{'label': i, 'value': i} for i in parties]
-
-    return general_election.to_json(date_format='iso', orient='split'), \
-           volatility.to_json(date_format='iso', orient='split'), \
-           json.dumps(parties), \
-           formatted_localidades, \
-           formatted_political_parties, \
-           formatted_features, \
-           formatted_localidades, \
-           formatted_political_parties, \
-           localidades[0], \
-           parties[1], \
-           features[0], \
-           localidades[0], \
-           parties[1], \
-           formatted_political_parties, \
-           formatted_political_parties, \
-           parties[1], \
-           parties[3], \
-           parties[1], \
-           formatted_political_parties
-
-
-@app.callback(Output('fig_volatility', 'figure'),
-              [Input('intermediate-data', 'children'),
-               Input('intermediate-parties', 'children'),
-               Input('intermediate-volatility', 'children'),
-               Input('dropdown_county_volatility', 'value'),
-               Input('dropdown_county_parties', 'value')])
-def update_volatility_chart(serialized_data,
-                            serialized_political_parties,
-                            serialized_volatility,
-                            dropdown_county_volatility,
-                            dropdown_volatility_political_party):
-    general_election = pd.read_json(serialized_data, orient='split')
-    political_parties = json.loads(serialized_political_parties)
-    election_volatility = pd.read_json(serialized_volatility, orient='split')
-    volatility_filtered_by_county = election_volatility.loc[general_election['localidad'] == dropdown_county_volatility]
-    fig_volatility = px.scatter(volatility_filtered_by_county,
-                                x=dropdown_volatility_political_party,
-                                y=political_parties[3],
-                                hover_data=['mesa'],
-                                color_discrete_sequence=['rgba(230, 0, 0, 0.9)'])
-    fig_volatility.update_traces(marker=dict(size=10))
-
-    return fig_volatility
-
-
-@app.callback([Output('pie_chart', 'figure'),
-               Output('googleMap', 'figure')],
-              [Input('intermediate-data', 'children'),
-               Input('intermediate-parties', 'children')])
-def update_pie_google_maps(serialized_data, serialized_political_parties):
-    general_election = pd.read_json(serialized_data, orient='split')
-    political_parties = json.loads(serialized_political_parties)
-    results = pd.DataFrame(general_election[political_parties].mean(axis=0).reset_index())
-    results.columns = ['Partidos Politicos', 'Porcentage Votos']
-    results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
-    results.reset_index(drop=True, inplace=True)
-
-    fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
-    fig_pie.update_layout()
-
-    # Map
-    LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
-    # geojson = ds.get_geo_polygons()
-    counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
-    dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
-    dat = dat.loc[dat.Municipios.str.upper() == council]
-    googleMap = px.choropleth_mapbox(dat,
-                                     geojson=geojson,
-                                     locations="Municipios",
-                                     featureidkey="properties.nombre",
-                                     center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
-                                     mapbox_style="carto-positron",
-                                     zoom=11,
-                                     opacity=0.2)  # color="Votes",
-    googleMap.update_layout()
-
-    return fig_pie, googleMap
-
-
-@app.callback(
     [Output('scatter', 'figure'),
      Output('hbar', 'figure'),
      Output('scatter-localidad', 'figure'),
      Output('third-table', 'children')],
-    [Input('intermediate-data', 'children'),
+    [Input('intermediate-election', 'children'),
      Input('intermediate-parties', 'children'),
      Input('dropdown-localidad', 'value'),
      Input('dropdown-localidad-partidos', 'value'),
@@ -408,16 +543,17 @@ def update_charts(serialized_data,
                   dropdown1,
                   dropdown2,
                   dropdown):
-    general_election = pd.read_json(serialized_data, orient='split')
+    election_2019 = pd.read_json(serialized_data, orient='split')
     political_parties = json.loads(serialized_political_parties)
-    results = pd.DataFrame(general_election[political_parties].mean(axis=0).reset_index())
+    results = pd.DataFrame(election_2019[political_parties].mean(axis=0).reset_index())
     results.columns = ['Partidos Politicos', 'Porcentage Votos']
     results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
     results.reset_index(drop=True, inplace=True)
 
-    pearson_r = general_election[dropdown1].corr(general_election[dropdown2])
+    pearson_r = election_2019[dropdown1].corr(election_2019[dropdown2])
     pearson_r = '{:,.2f}'.format(pearson_r)
-    fig_scatter = px.scatter(general_election,
+    # try:
+    fig_scatter = px.scatter(election_2019,
                              x=dropdown1,
                              y=dropdown2,
                              hover_data=['mesa'],
@@ -429,23 +565,24 @@ def update_charts(serialized_data,
                               )
 
     # Voting Booths, horizontal bar plot
-    sorted_by_winner = general_election.sort_values(by=[dropdown])
+    sorted_by_winner = election_2019.sort_values(by=[dropdown])
     fig_bar = px.bar(sorted_by_winner,
                      x=political_parties,
-                     y=np.arange(0, len(general_election)),
+                     y=np.arange(0, len(election_2019)),
                      orientation='h',
                      barmode="stack",
                      opacity=1,
                      hover_data=["mesa"],
                      labels={'value': "Porcentage Votos", 'y': '', 'variable': 'Partidos Politicos'},
                      color_discrete_sequence=["red", "blue", "yellow", "green", "magenta", "goldenrod"],
-                     height=450)
+                     height=750,
+                     width=1500)
     fig_bar.update_layout(plot_bgcolor=colors['background'],
                           paper_bgcolor=colors['background'],
                           font_color=colors['text']
                           )
 
-    filtered_by_county = general_election.loc[general_election['localidad'] == dropdown_localidad]
+    filtered_by_county = election_2019.loc[election_2019['localidad'] == dropdown_localidad]
     pearson_r = filtered_by_county[dropdown_localidad_feature] \
         .corr(filtered_by_county[dropdown_localidad_partido])
     pearson_r = '{:,.2f}'.format(pearson_r)
@@ -481,3 +618,53 @@ def update_charts(serialized_data,
 
 if __name__ == "__main__":
     app.run_server(debug=True)
+
+
+# ToDo
+#  Mostrar numero total de votantes en el mapa (hover).
+#  Add absolute number of votos centro per localidad (more precise to search people)
+#  Add data from elections_2017 -> Add absolute number of votos centro
+#  Add cumulative subplot to show the majority of voting booths in each location.
+
+
+# import plotly.graph_objects as go
+#
+# googleMap = go.Figure(px.choropleth_mapbox(
+#     px.choropleth_mapbox(dat,
+#                          geojson=geojson,
+#                          locations="Municipios",
+#                          featureidkey="properties.nombre",
+#                          center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
+#                          mapbox_style='carto-positron',
+#                          zoom=11,
+#                          opacity=0.2)))  # color="Votes",)  # here you set all attributes needed for a Choroplethmapbox
+# googleMap.add_scattermapbox(lat=[-34.45866],
+#                             lon=[-58.9142],
+#                             mode='markers+text',
+#                             text='Test',  #a list of strings, one  for each geographical position  (lon, lat)
+#                             below='',
+#                             marker_size=12,
+#                             marker_color='rgb(235, 0, 100)')
+
+# googleMap.update_layout((title_text ='Your plot title', title_x =0.5,
+#                         mapbox = dict(center= dict(lat=52.370216, lon=4.895168),  #change to the center of your map
+#                                           accesstoken= "your-mapbox-access-token",
+#                                           zoom=6, #change this value correspondingly, for your map
+#                                           style="light"  # set your prefered mapbox style
+#                                           ))
+
+
+# Map
+# LOC_PILAR = [-34.45866, -58.9142]  # LOC_BsAs = [-35.828117, -59.811962]
+# counties = {features['properties']['nombre']: random.randint(0, 300) for features in geojson['features']}
+# dat = pd.DataFrame(list(counties.items()), columns=['Municipios', 'Votes'])
+# dat = dat.loc[dat.Municipios.str.upper() == council]
+
+# googleMap = px.choropleth_mapbox(dat,
+#                                  geojson=geojson,
+#                                  locations="Municipios",
+#                                  featureidkey="properties.nombre",
+#                                  center={"lat": LOC_PILAR[0], "lon": LOC_PILAR[1]},
+#                                  mapbox_style="carto-positron",
+#                                  zoom=11,
+#                                  opacity=0.2)  # color="Votes",
