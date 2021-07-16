@@ -49,7 +49,7 @@ class DataSource:
         return councils
 
     @staticmethod
-    def load_electoral_roll(dataset='./dataset/demographics_mesa_2019.csv'):
+    def load_electoral_roll(dataset='./dataset/demographics_mesa_2017.csv'):
         electoral_roll = pd.read_csv(dataset)
         electoral_roll.columns = electoral_roll.columns.str.lower()
         return electoral_roll
@@ -64,7 +64,7 @@ class DataSource:
         df.insert(4, 'nombre_partido', '')
         df.insert(5, 'prop_votos', '')
 
-        parties = self.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
+        parties = self.get_council_parties(year, vote_ids=df.codigo_voto.unique())
 
         for code in df.codigo_voto.unique():
             party = self.political_parties.loc[(self.political_parties['codigo_voto'] == code) &
@@ -93,6 +93,10 @@ class DataSource:
             party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido'] \
                 .values
             ps.loc[ps.codigo_voto == code, 'nombre_partido'] = party[0]
+
+        # Select those Paso results with the same voting code as in the general election
+        # codigo_votos = df.codigo_voto.unique()
+        # ps = ps[ps['codigo_voto'].isin(codigo_votos)]
 
         # Calculate proportion of votes for each party
         # Return only those political parties that reached the general election

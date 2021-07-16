@@ -14,11 +14,15 @@ from dash.dependencies import Input, Output
 
 data_dir = './data/'
 general_election = pd.read_csv(path.join(data_dir, 'generales.csv'))
+general_election_2017 = pd.read_csv(path.join(data_dir, 'generales_2017.csv'))
 paso_election = pd.read_csv(path.join(data_dir, 'paso.csv'))
 volatility = pd.read_csv(path.join(data_dir, 'volatility.csv'))
 
 with open(path.join(data_dir, 'parties.pkl'), 'rb') as open_file:
     parties = pickle.load(open_file)
+
+with open(path.join(data_dir, 'parties_2017.pkl'), 'rb') as open_file:
+    parties_2017 = pickle.load(open_file)
 
 with open(path.join(data_dir, 'counties.pkl'), 'rb') as open_file:
     localidades = pickle.load(open_file)
@@ -68,7 +72,9 @@ app.layout = dbc.Container(
                            marks={2019: '2019'})
                 ),
 
-        dbc.Row(dbc.Col(dcc.Graph(id='pie_chart'), width=6)),
+        dbc.Row([dbc.Col(dcc.Graph(id='pie_chart'), width=5),
+                 dbc.Col(dcc.Graph(id='votos_localidad'), width=5)]
+                ),
 
         html.H2(children=f"Votos Centro"),
         dbc.Row(
@@ -85,16 +91,11 @@ app.layout = dbc.Container(
                                 ], style={"width": "100%"}
                             )
                         ]
-                    ), width=5,
+                    ), width=10,
                 ),
 
                 dbc.Col(
-                    dbc.Row(
-                        [
-                            dcc.Graph(id='googleMap'),
-
-                        ], style={"width": "100%"},
-                    ), width=5,
+                        dcc.Graph(id='googleMap'), width=10,
                 )
             ]
         ),
@@ -104,6 +105,13 @@ app.layout = dbc.Container(
                    marks={i: f'{i}' for i in range(0, 700, 50)}),
         html.H4(children=f"Top mesas seleccionadas: "),
         html.Div(id='map-slider-value', style={'whiteSpace': 'pre-line'}),
+        html.H4(children=f"Total Votantes: "),
+        html.Div(id='total_voters', style={'whiteSpace': 'pre-line'}),
+
+        html.Br(),
+        html.Br(),
+        html.H4(children=f"Elecciones 2017"),
+        dcc.Graph(id='fig_2017'),
 
         # Section 2a: Resultados generales de Pilar, mesa por mesa
         html.H2(
@@ -313,7 +321,10 @@ def update_dataframe(selected_year):
 
 @app.callback([Output('votos-centro-table', 'children'),
                Output('googleMap', 'figure'),
-               Output('map-slider-value', 'children')],
+               Output('votos_localidad', 'figure'),
+               Output('fig_2017', 'figure'),
+               Output('map-slider-value', 'children'),
+               Output('total_voters', 'children')],
               [Input('intermediate-election', 'children'),
                Input('intermediate-paso', 'children'),
                Input('intermediate-parties', 'children'),
@@ -333,17 +344,31 @@ def update_votos_centro(serialized_data,
     results.sort_values(by=['Porcentage Votos'], ascending=False, inplace=True)
     results.reset_index(drop=True, inplace=True)
 
+    # Sum of votes by localidad
+    votes_localidad = election_2019.groupby(['localidad']).sum().reset_index()
+    votes_localidad = votes_localidad[['localidad', 'CONSENSO FEDERAL cant', 'FRENTE NOS cant']]
+    votes_localidad.columns = ['localidad', 'CONSENSO FEDERAL', 'FRENTE NOS']
+    number_booths_localidad = election_2019.groupby(['localidad']).count().reset_index()
+    number_booths_localidad = number_booths_localidad[['localidad', 'mesa']]
+
+    tt = votes_localidad.sum(axis=1) / number_booths_localidad['mesa']
+
+    center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
+    sum_cols = pd.DataFrame(election_2019[center_parties[0]] + election_2019[center_parties[1]])
+    sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
+                                 election_2019[center_parties[1] + ' cant'])
+    sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
+    # sum_cols_cant_paso = pd.DataFrame(paso_2019[center_parties[0] + ' cant'] +
+    #                                   paso_2019[center_parties[1] + ' cant'])
     if dropdown_votos_centro == '2019':
-        center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
-        sum_cols = pd.DataFrame(election_2019[center_parties[0]] + election_2019[center_parties[1]])
-        data = pd.concat([election_2019[['mesa', 'school', 'localidad']], sum_cols], axis=1, ignore_index=True)
-
+        data = pd.concat([election_2019[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
+                         axis=1, ignore_index=True)
+        columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
     elif dropdown_votos_centro == '2019-paso':
-        center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
-        sum_cols = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
-        data = pd.concat([paso_2019[['mesa', 'school', 'localidad']], sum_cols], axis=1, ignore_index=True)
+        data = pd.concat([paso_2019[['mesa', 'school', 'localidad']], sum_cols_paso, sum_cols_cant],
+                         axis=1, ignore_index=True)
+        columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
 
-    columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos']
     data.columns = columns
     data['Porcentaje Votos'] = pd.Series([round(val * 100, 2) for val in data['Porcentaje Votos']],
                                          index=data.index)
@@ -351,6 +376,8 @@ def update_votos_centro(serialized_data,
 
     # format data to plot on map
     data_filt = data.iloc[0:number_booths]
+    total_electors = data_filt['Cantidad Votos'].sum()
+    # print(total_electors)
     data_map = data_filt['Localidad'].value_counts(normalize=True).reset_index()
     data_map['Localidad'] = data_map['Localidad'] * 100
     data_map.columns = ['localidad', 'Porcentaje Mesas']
@@ -380,13 +407,24 @@ def update_votos_centro(serialized_data,
                                 lon="lon",
                                 color="Porcentaje Mesas",
                                 size="Porcentaje Mesas",
+                                hover_data=['Porcentaje Mesas'],
+                                hover_name="Porcentaje Mesas",
                                 color_continuous_scale=px.colors.sequential.Turbo,
                                 size_max=20,
                                 zoom=10)
+    votes_fig = px.bar(votes_localidad,
+                       x='localidad',
+                       y=['CONSENSO FEDERAL', 'FRENTE NOS']
+                       )
 
     map_fig.update_layout(mapbox_style="open-street-map")
 
-    return table, map_fig, number_booths
+    cols_cant =[party + ' cant' for party in parties_2017]
+    results = general_election_2017[cols_cant].sum().reset_index()
+    results.columns = ['partidos', 'resultados']
+    fig_2017 = px.bar(results, x='partidos', y='resultados')
+
+    return table, map_fig, votes_fig, fig_2017, number_booths, total_electors
 
 
 @app.callback(Output('fig_volatility', 'figure'),
@@ -583,10 +621,9 @@ if __name__ == "__main__":
 
 
 # ToDo
-#  Agregar cantidad votos paso y general a la tabla. Mostrar numero total de votantes en el mapa (hover).
-#  Remove dropdown menu from table
-#  Add data from elections_2017.
+#  Mostrar numero total de votantes en el mapa (hover).
 #  Add absolute number of votos centro per localidad (more precise to search people)
+#  Add data from elections_2017 -> Add absolute number of votos centro
 #  Add cumulative subplot to show the majority of voting booths in each location.
 
 
