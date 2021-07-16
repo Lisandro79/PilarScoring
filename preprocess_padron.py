@@ -12,12 +12,12 @@ def process_booth_demographics_2017():
                   'Circuito', 'Mesa', 'Escuela', 'Direccion']
     pad = padron.copy(deep=True)
     pad['Localidad'] = ''
-    circuits_councils = {'768': 'Pilar',
-                         '769': 'Manzanares',
-                         '770': 'Derqui',
-                         '770A': 'La Lonja',
-                         '771': 'Del Viso',
-                         '772': 'Villa Rosa'
+    circuits_councils = {'768': 'PILAR',
+                         '769': 'MANZANARES',
+                         '770': 'PRESIDENTE DERQUI',
+                         '770A': 'LA LONJA',
+                         '771': 'DEL VISO',
+                         '772': 'VILLA ROSA'
                          }
 
     # Assign Localidad
