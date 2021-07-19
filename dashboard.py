@@ -98,14 +98,14 @@ app.layout = dbc.Container(
                                              options=[{'label': i, 'value': i} for i in year_partidos_centro['2019']],
                                              value='CONSENSO FEDERAL + FRENTE NOS'),
                                 html.Div(id='votos-centro-table')
-                                ], style={"width": "100%"}
+                            ], style={"width": "100%"}
                             )
                         ]
                     ), width=10,
                 ),
 
                 dbc.Col(
-                        dcc.Graph(id='googleMap'), width=10,
+                    dcc.Graph(id='googleMap'), width=10,
                 )
             ]
         ),
@@ -128,7 +128,7 @@ app.layout = dbc.Container(
             [
                 "Resultados mesa por mesa de la elección general.",
                 html.Br()
-             ]
+            ]
         ),
         html.P(
             ["El primer gráfico muestra la relación entre los votos de cada partido en las mesas electoraes. "
@@ -184,23 +184,24 @@ app.layout = dbc.Container(
                       ]
         ),
         html.P(
-            children=["En esta sección analizamos las diferencias en los votos, mesa por mesa entre las elecciones paso y "
-                      "las elecciones generales. A diferencia de los gráficos anteriores, esta sección permite "
-                      "filtrar los resultados electorales por cada localidad de Pilar. ",
-                      html.Br(),
-                      html.Br(),
-                      "Los resultados que presentamos a continuación muestran la diferencia en la proporción de votos"
-                      "recibidos desde las paso hasta las elecciones generales. Juntos por el cambio muestra un "
-                      "significativo aumento de la proporción de votantes de las paso a la elección general. ",
-                      html.Br(),
-                      "Eje vertical: proporción de votos desde las paso a la elección general "
-                      "para Juntos por el Cambio (valores positivos indican un aumento en la proporción de votos).",
-                      html.Br(),
-                      "Eje horizontal: proporción de votos para los demás partidos. ",
-                      html.Br(),
-                      "Seleccione el filtro para ver la correlación entre el aumento de votos para Juntos por el cambio "
-                      "y los resultados de los demas partidos.",
-                      html.Br()]
+            children=[
+                "En esta sección analizamos las diferencias en los votos, mesa por mesa entre las elecciones paso y "
+                "las elecciones generales. A diferencia de los gráficos anteriores, esta sección permite "
+                "filtrar los resultados electorales por cada localidad de Pilar. ",
+                html.Br(),
+                html.Br(),
+                "Los resultados que presentamos a continuación muestran la diferencia en la proporción de votos"
+                "recibidos desde las paso hasta las elecciones generales. Juntos por el cambio muestra un "
+                "significativo aumento de la proporción de votantes de las paso a la elección general. ",
+                html.Br(),
+                "Eje vertical: proporción de votos desde las paso a la elección general "
+                "para Juntos por el Cambio (valores positivos indican un aumento en la proporción de votos).",
+                html.Br(),
+                "Eje horizontal: proporción de votos para los demás partidos. ",
+                html.Br(),
+                "Seleccione el filtro para ver la correlación entre el aumento de votos para Juntos por el cambio "
+                "y los resultados de los demas partidos.",
+                html.Br()]
         ),
 
         dbc.Row(
@@ -245,9 +246,9 @@ app.layout = dbc.Container(
                                      value=localidades[0]
                                      ), width=4),
                 dbc.Col(dcc.Dropdown(id='dropdown-localidad-partidos',
-                                      options=[{'label': i, 'value': i} for i in parties],
-                                      value=parties[0]
-                                      ), width=4),
+                                     options=[{'label': i, 'value': i} for i in parties],
+                                     value=parties[0]
+                                     ), width=4),
                 dbc.Col(dcc.Dropdown(id='dropdown-localidad-features',
                                      options=[{'label': i, 'value': i} for i in features],
                                      value=features[1]
@@ -268,7 +269,7 @@ app.layout = dbc.Container(
 
 
 @app.callback([Output('dropdown-partidos-centro', 'options'),
-              Output('dropdown-partidos-centro', 'value')],
+               Output('dropdown-partidos-centro', 'value')],
               Input('dropdown-votos-centro', 'value'))
 def update_dropdown(year):
     options = [{'label': i, 'value': i} for i in year_partidos_centro[year]]
@@ -317,27 +318,27 @@ def update_dataframe(selected_year):
     formatted_political_parties = [{'label': i, 'value': i} for i in parties]
 
     return general_election.to_json(date_format='iso', orient='split'), \
-        paso_election.to_json(date_format='iso', orient='split'), \
-        general_election_2017.to_json(date_format='iso', orient='split'), \
-        volatility.to_json(date_format='iso', orient='split'), \
-        json.dumps(parties), \
-        fig_pie, \
-        formatted_localidades, \
-        formatted_political_parties, \
-        formatted_features, \
-        formatted_localidades, \
-        formatted_political_parties, \
-        localidades[0], \
-        parties[1], \
-        features[1], \
-        localidades[0], \
-        parties[1], \
-        formatted_political_parties, \
-        formatted_political_parties, \
-        parties[1], \
-        parties[3], \
-        parties[1], \
-        formatted_political_parties
+           paso_election.to_json(date_format='iso', orient='split'), \
+           general_election_2017.to_json(date_format='iso', orient='split'), \
+           volatility.to_json(date_format='iso', orient='split'), \
+           json.dumps(parties), \
+           fig_pie, \
+           formatted_localidades, \
+           formatted_political_parties, \
+           formatted_features, \
+           formatted_localidades, \
+           formatted_political_parties, \
+           localidades[0], \
+           parties[1], \
+           features[1], \
+           localidades[0], \
+           parties[1], \
+           formatted_political_parties, \
+           formatted_political_parties, \
+           parties[1], \
+           parties[3], \
+           parties[1], \
+           formatted_political_parties
 
 
 @app.callback([Output('votos-centro-table', 'children'),
@@ -351,15 +352,17 @@ def update_dataframe(selected_year):
                Input('intermediate-election-2017', 'children'),
                Input('intermediate-parties', 'children'),
                Input('dropdown-votos-centro', 'value'),
+               Input('dropdown-partidos-centro', 'value'),
                Input('map-slider', 'value')])
 def update_votos_centro(serialized_data,
                         serialized_paso,
                         serialized_data_2017,
                         serialized_political_parties,
                         dropdown_votos_centro,
+                        dropdown_partidos_centro,
                         number_booths):
     election_2019 = pd.read_json(serialized_data, orient='split')
-    paso_2019 = pd.read_json(serialized_paso,  orient='split')
+    paso_2019 = pd.read_json(serialized_paso, orient='split')
     election_2017 = pd.read_json(serialized_data_2017, orient='split')
     political_parties = json.loads(serialized_political_parties)
     results = pd.DataFrame(election_2019[political_parties].mean(axis=0).reset_index())
@@ -374,30 +377,83 @@ def update_votos_centro(serialized_data,
     votes_localidad.columns = ['localidad', 'CONSENSO FEDERAL', 'FRENTE NOS']
     number_booths_localidad = election_2019.groupby(['localidad']).count().reset_index()
     number_booths_localidad = number_booths_localidad[['localidad', 'mesa']]
+    # tt = votes_localidad.sum(axis=1) / number_booths_localidad['mesa']
 
-    tt = votes_localidad.sum(axis=1) / number_booths_localidad['mesa']
-
-    center_parties = ['FRENTE NOS', 'CONSENSO FEDERAL']
-    sum_cols = pd.DataFrame(election_2019[center_parties[0]] + election_2019[center_parties[1]])
-    sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
-                                 election_2019[center_parties[1] + ' cant'])
-    sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
+    # year_partidos_centro = {'2019': ['CONSENSO FEDERAL', 'FRENTE NOS', 'CONSENSO FEDERAL + FRENTE NOS'],
+    #                         '2019-paso': ['CONSENSO FEDERAL', 'FRENTE NOS', 'CONSENSO FEDERAL + FRENTE NOS'],
+    #                         '2017': ['1PAIS', 'FRENTE JUSTICIALISTA', 'SUMEMOS PILAR',
+    #                                  '1PAIS + FRENTE JUSTICIALISTA', '1PAIS + SUMEMOS PILAR',
+    #                                  'FRENTE JUSTICIALISTA + SUMEMOS PILAR'
+    #                                  '1PAIS + FRENTE JUSTICIALISTA + SUMEMOS PILAR']}
 
     if dropdown_votos_centro == '2019':
+        center_parties = ['CONSENSO FEDERAL', 'FRENTE NOS']
+        if dropdown_partidos_centro == 'CONSENSO FEDERAL + FRENTE NOS':
+            sum_cols = pd.DataFrame(election_2019[center_parties[0]] + election_2019[center_parties[1]])
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
+                                         election_2019[center_parties[1] + ' cant'])
+        elif dropdown_partidos_centro == 'CONSENSO FEDERAL':
+            sum_cols = pd.DataFrame(election_2019[center_parties[0]])
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'])
+        elif dropdown_partidos_centro == 'FRENTE NOS':
+            sum_cols = pd.DataFrame(election_2019[center_parties[1]])
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[1] + ' cant'])
+
         data = pd.concat([election_2019[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
                          axis=1, ignore_index=True)
         columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
+
     elif dropdown_votos_centro == '2019-paso':
+        center_parties = ['CONSENSO FEDERAL', 'FRENTE NOS']
+        if dropdown_partidos_centro == 'CONSENSO FEDERAL + FRENTE NOS':
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
+                                         election_2019[center_parties[1] + ' cant'])
+            sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
+        elif dropdown_partidos_centro == 'CONSENSO FEDERAL':
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'])
+            sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]])
+        elif dropdown_partidos_centro == 'FRENTE NOS':
+            sum_cols_cant = pd.DataFrame(election_2019[center_parties[1] + ' cant'])
+            sum_cols_paso = pd.DataFrame(paso_2019[center_parties[1]])
+
         data = pd.concat([paso_2019[['mesa', 'school', 'localidad']], sum_cols_paso, sum_cols_cant],
                          axis=1, ignore_index=True)
         columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
+
     elif dropdown_votos_centro == '2017':
-        center_parties = ['1PAIS', 'FRENTE JUSTICIALISTA']  # ['1PAIS', 'FRENTE JUSTICIALISTA', 'SUMEMOS PILAR']
-        sum_cols = pd.DataFrame(election_2017[center_parties[0]] + election_2017[center_parties[1]])
-        sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'] +
-                                     election_2017[center_parties[1] + ' cant'])
-        # sum_cols = pd.DataFrame(election_2017[center_parties[0]])
-        # sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'])
+        center_parties = ['1PAIS', 'FRENTE JUSTICIALISTA', 'SUMEMOS PILAR']
+        if dropdown_partidos_centro == '1PAIS + FRENTE JUSTICIALISTA + SUMEMOS PILAR':
+            sum_cols = pd.DataFrame(election_2017[center_parties[0]] +
+                                    election_2017[center_parties[1]] +
+                                    election_2017[center_parties[2]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'] +
+                                         election_2017[center_parties[1] + ' cant'] +
+                                         election_2017[center_parties[2] + ' cant'])
+        elif dropdown_partidos_centro == '1PAIS + FRENTE JUSTICIALISTA':
+            sum_cols = pd.DataFrame(election_2017[center_parties[0]] +
+                                    election_2017[center_parties[1]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'] +
+                                         election_2017[center_parties[1] + ' cant'])
+        elif dropdown_partidos_centro == '1PAIS + SUMEMOS PILAR':
+            sum_cols = pd.DataFrame(election_2017[center_parties[0]] +
+                                    election_2017[center_parties[2]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'] +
+                                         election_2017[center_parties[2] + ' cant'])
+        elif dropdown_partidos_centro == 'FRENTE JUSTICIALISTA + SUMEMOS PILAR':
+            sum_cols = pd.DataFrame(election_2017[center_parties[1]] +
+                                    election_2017[center_parties[2]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[1] + ' cant'] +
+                                         election_2017[center_parties[1] + ' cant'])
+        elif dropdown_partidos_centro == '1PAIS':
+            sum_cols = pd.DataFrame(election_2017[center_parties[0]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'])
+        elif dropdown_partidos_centro == 'FRENTE JUSTICIALISTA':
+            sum_cols = pd.DataFrame(election_2017[center_parties[1]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[1] + ' cant'])
+        elif dropdown_partidos_centro == 'SUMEMOS PILAR':
+            sum_cols = pd.DataFrame(election_2017[center_parties[2]])
+            sum_cols_cant = pd.DataFrame(election_2017[center_parties[2] + ' cant'])
+
         data = pd.concat([election_2017[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
                          axis=1, ignore_index=True)
         columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
@@ -452,7 +508,7 @@ def update_votos_centro(serialized_data,
 
     map_fig.update_layout(mapbox_style="open-street-map")
 
-    cols_cant =[party + ' cant' for party in parties_2017]
+    cols_cant = [party + ' cant' for party in parties_2017]
     results = general_election_2017[cols_cant].sum().reset_index()
     results.columns = ['partidos', 'resultados']
     fig_2017 = px.bar(results, x='partidos', y='resultados')
@@ -651,7 +707,6 @@ def update_charts(serialized_data,
 
 if __name__ == "__main__":
     app.run_server(debug=True)
-
 
 # ToDo
 #  Mostrar numero total de votantes en el mapa (hover).
