@@ -34,7 +34,14 @@ data_loc = './geographical_data/buenos_aires.geojson'
 with open(data_loc) as open_file:
     geojson = json.load(open_file)
 
-election_type = ['2019', '2019-paso']
+election_type = ['2019', '2019-paso', '2017']
+
+year_partidos_centro = {'2019': ['CONSENSO FEDERAL', 'FRENTE NOS', 'CONSENSO FEDERAL + FRENTE NOS'],
+                        '2019-paso': ['CONSENSO FEDERAL', 'FRENTE NOS', 'CONSENSO FEDERAL + FRENTE NOS'],
+                        '2017': ['1PAIS', 'FRENTE JUSTICIALISTA', 'SUMEMOS PILAR',
+                                 '1PAIS + FRENTE JUSTICIALISTA', '1PAIS + SUMEMOS PILAR',
+                                 'FRENTE JUSTICIALISTA + SUMEMOS PILAR'
+                                 '1PAIS + FRENTE JUSTICIALISTA + SUMEMOS PILAR']}
 
 data_loc = './geographical_data/Localidades_BuenosAires.geojson'
 with open(data_loc) as open_file:
@@ -87,6 +94,9 @@ app.layout = dbc.Container(
                                              options=[{'label': i, 'value': i} for i in election_type],
                                              value=election_type[0]
                                              ),
+                                dcc.Dropdown(id='dropdown-partidos-centro',
+                                             options=[{'label': i, 'value': i} for i in year_partidos_centro['2019']],
+                                             value='CONSENSO FEDERAL + FRENTE NOS'),
                                 html.Div(id='votos-centro-table')
                                 ], style={"width": "100%"}
                             )
@@ -249,6 +259,7 @@ app.layout = dbc.Container(
         # Hidden div inside the app that stores the intermediate value
         html.Div(id='intermediate-election', style={'display': 'none'}),
         html.Div(id='intermediate-paso', style={'display': 'none'}),
+        html.Div(id='intermediate-election-2017', style={'display': 'none'}),
         html.Div(id='intermediate-volatility', style={'display': 'none'}),
         html.Div(id='intermediate-parties', style={'display': 'none'}),
 
@@ -256,9 +267,18 @@ app.layout = dbc.Container(
 )
 
 
+@app.callback([Output('dropdown-partidos-centro', 'options'),
+              Output('dropdown-partidos-centro', 'value')],
+              Input('dropdown-votos-centro', 'value'))
+def update_dropdown(year):
+    options = [{'label': i, 'value': i} for i in year_partidos_centro[year]]
+    return options, options[0]['value']
+
+
 @app.callback(
     [Output('intermediate-election', 'children'),
      Output('intermediate-paso', 'children'),
+     Output('intermediate-election-2017', 'children'),
      Output('intermediate-volatility', 'children'),
      Output('intermediate-parties', 'children'),
      Output('pie_chart', 'figure'),
@@ -298,6 +318,7 @@ def update_dataframe(selected_year):
 
     return general_election.to_json(date_format='iso', orient='split'), \
         paso_election.to_json(date_format='iso', orient='split'), \
+        general_election_2017.to_json(date_format='iso', orient='split'), \
         volatility.to_json(date_format='iso', orient='split'), \
         json.dumps(parties), \
         fig_pie, \
@@ -327,16 +348,19 @@ def update_dataframe(selected_year):
                Output('total_voters', 'children')],
               [Input('intermediate-election', 'children'),
                Input('intermediate-paso', 'children'),
+               Input('intermediate-election-2017', 'children'),
                Input('intermediate-parties', 'children'),
                Input('dropdown-votos-centro', 'value'),
                Input('map-slider', 'value')])
 def update_votos_centro(serialized_data,
                         serialized_paso,
+                        serialized_data_2017,
                         serialized_political_parties,
                         dropdown_votos_centro,
                         number_booths):
     election_2019 = pd.read_json(serialized_data, orient='split')
     paso_2019 = pd.read_json(serialized_paso,  orient='split')
+    election_2017 = pd.read_json(serialized_data_2017, orient='split')
     political_parties = json.loads(serialized_political_parties)
     results = pd.DataFrame(election_2019[political_parties].mean(axis=0).reset_index())
 
@@ -358,14 +382,23 @@ def update_votos_centro(serialized_data,
     sum_cols_cant = pd.DataFrame(election_2019[center_parties[0] + ' cant'] +
                                  election_2019[center_parties[1] + ' cant'])
     sum_cols_paso = pd.DataFrame(paso_2019[center_parties[0]] + paso_2019[center_parties[1]])
-    # sum_cols_cant_paso = pd.DataFrame(paso_2019[center_parties[0] + ' cant'] +
-    #                                   paso_2019[center_parties[1] + ' cant'])
+
     if dropdown_votos_centro == '2019':
         data = pd.concat([election_2019[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
                          axis=1, ignore_index=True)
         columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
     elif dropdown_votos_centro == '2019-paso':
         data = pd.concat([paso_2019[['mesa', 'school', 'localidad']], sum_cols_paso, sum_cols_cant],
+                         axis=1, ignore_index=True)
+        columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
+    elif dropdown_votos_centro == '2017':
+        center_parties = ['1PAIS', 'FRENTE JUSTICIALISTA']  # ['1PAIS', 'FRENTE JUSTICIALISTA', 'SUMEMOS PILAR']
+        sum_cols = pd.DataFrame(election_2017[center_parties[0]] + election_2017[center_parties[1]])
+        sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'] +
+                                     election_2017[center_parties[1] + ' cant'])
+        # sum_cols = pd.DataFrame(election_2017[center_parties[0]])
+        # sum_cols_cant = pd.DataFrame(election_2017[center_parties[0] + ' cant'])
+        data = pd.concat([election_2017[['mesa', 'school', 'localidad']], sum_cols, sum_cols_cant],
                          axis=1, ignore_index=True)
         columns = ['Mesa', 'Escuela', 'Localidad', 'Porcentaje Votos', 'Cantidad Votos']
 
