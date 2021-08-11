@@ -126,8 +126,8 @@ app.layout = dbc.Container(
 
         html.Br(),
         html.Br(),
-        html.H4(children=f"Elecciones 2017"),
-        dcc.Graph(id='fig_2017'),
+        # html.H4(children=f"Elecciones 2017"),
+        # dcc.Graph(id='fig_2017'),
 
         # Section 2a: Resultados generales de Pilar, mesa por mesa
         html.H2(
@@ -365,7 +365,7 @@ def update_dataframe(selected_year):
                Output('googleMap', 'figure'),
                Output('votos_localidad', 'figure'),
                Output('votos_localidad_2017', 'figure'),
-               Output('fig_2017', 'figure'),
+               # Output('fig_2017', 'figure'),
                Output('map-slider-value', 'children'),
                Output('total_voters', 'children')],
               [Input('intermediate-election', 'children'),
@@ -533,9 +533,9 @@ def update_votos_centro(serialized_data,
     cols_cant = [party + ' cant' for party in parties_2017]
     results = general_election_2017[cols_cant].sum().reset_index()
     results.columns = ['partidos', 'resultados']
-    fig_2017 = px.bar(results, x='partidos', y='resultados')
+    # fig_2017 = px.bar(results, x='partidos', y='resultados')
 
-    return table, map_fig, votes_fig, votes_fig_2017, fig_2017, number_booths, total_electors
+    return table, map_fig, votes_fig, votes_fig_2017,  number_booths, total_electors  # fig_2017,
 
 
 @app.callback(Output('fig_volatility', 'figure'),
